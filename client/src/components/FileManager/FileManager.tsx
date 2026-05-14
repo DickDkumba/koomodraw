@@ -6,16 +6,20 @@ import './FileManager.css';
 
 export function FileManager() {
   const { files, isOpen, closeManager, remove } = useFileStore();
-  const loadScene = useSceneStore((s) => s.loadScene);
+  const loadAll = useSceneStore((s) => s.loadAll);
   const setObjects = useObjectStore((s) => s.setObjects);
 
   if (!isOpen) return null;
 
   function handleLoad(file: SavedFile) {
     try {
-      const { scene, objects } = JSON.parse(file.sceneData);
-      loadScene(scene);
-      setObjects(objects);
+      const parsed = JSON.parse(file.sceneData);
+      // Backward compat: old files have a single `scene`, new have `scenes`
+      const scenes = parsed.scenes ?? [parsed.scene];
+      const fileId = parsed.fileId ?? file.id;
+      const fileName = parsed.fileName ?? file.name;
+      loadAll(fileName, fileId, scenes);
+      setObjects(parsed.objects ?? {});
       closeManager();
     } catch {
       alert('Failed to load file. Data may be corrupted.');
@@ -24,9 +28,7 @@ export function FileManager() {
 
   function handleDelete(e: React.MouseEvent, id: string) {
     e.stopPropagation();
-    if (window.confirm('Delete this saved file?')) {
-      remove(id);
-    }
+    if (window.confirm('Delete this saved file?')) remove(id);
   }
 
   function formatDate(ts: number) {
@@ -59,9 +61,7 @@ export function FileManager() {
                   onClick={(e) => handleDelete(e, file.id)}
                   title="Delete"
                   aria-label="Delete file"
-                >
-                  ✕
-                </button>
+                >✕</button>
               </li>
             ))}
           </ul>

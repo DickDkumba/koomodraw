@@ -7,20 +7,12 @@ import type {
   CylinderShape,
 } from '../../types/shapes';
 
-function selectionBox(
+function applyFillStroke(
   ctx: CanvasRenderingContext2D,
-  x: number, y: number, w: number, h: number
+  fillColor: string,
+  strokeColor: string,
+  strokeWidth: number
 ): void {
-  ctx.save();
-  ctx.strokeStyle = '#2563eb';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([4, 3]);
-  ctx.strokeRect(x - 4, y - 4, w + 8, h + 8);
-  ctx.setLineDash([]);
-  ctx.restore();
-}
-
-function applyFillStroke(ctx: CanvasRenderingContext2D, fillColor: string, strokeColor: string, strokeWidth: number): void {
   ctx.fillStyle = fillColor;
   ctx.strokeStyle = strokeColor;
   ctx.lineWidth = strokeWidth;
@@ -28,7 +20,13 @@ function applyFillStroke(ctx: CanvasRenderingContext2D, fillColor: string, strok
   ctx.stroke();
 }
 
-function drawLabel(ctx: CanvasRenderingContext2D, label: string, cx: number, cy: number, fontSize = 13): void {
+function drawLabel(
+  ctx: CanvasRenderingContext2D,
+  label: string,
+  cx: number,
+  cy: number,
+  fontSize = 13
+): void {
   if (!label) return;
   ctx.save();
   ctx.font = `${fontSize}px Inter, system-ui, sans-serif`;
@@ -39,25 +37,23 @@ function drawLabel(ctx: CanvasRenderingContext2D, label: string, cx: number, cy:
   ctx.restore();
 }
 
-export function drawRectangle(ctx: CanvasRenderingContext2D, s: RectangleShape, selected: boolean): void {
+export function drawRectangle(ctx: CanvasRenderingContext2D, s: RectangleShape): void {
   ctx.beginPath();
   ctx.roundRect(s.x, s.y, s.width, s.height, 4);
   applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth);
   drawLabel(ctx, s.label, s.x + s.width / 2, s.y + s.height / 2);
-  if (selected) selectionBox(ctx, s.x, s.y, s.width, s.height);
 }
 
-export function drawCircle(ctx: CanvasRenderingContext2D, s: CircleShape, selected: boolean): void {
+export function drawCircle(ctx: CanvasRenderingContext2D, s: CircleShape): void {
   const rx = s.width / 2;
   const ry = s.height / 2;
   ctx.beginPath();
   ctx.ellipse(s.x + rx, s.y + ry, rx, ry, 0, 0, Math.PI * 2);
   applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth);
   drawLabel(ctx, s.label, s.x + rx, s.y + ry);
-  if (selected) selectionBox(ctx, s.x, s.y, s.width, s.height);
 }
 
-export function drawDiamond(ctx: CanvasRenderingContext2D, s: DiamondShape, selected: boolean): void {
+export function drawDiamond(ctx: CanvasRenderingContext2D, s: DiamondShape): void {
   const cx = s.x + s.width / 2;
   const cy = s.y + s.height / 2;
   ctx.beginPath();
@@ -68,20 +64,18 @@ export function drawDiamond(ctx: CanvasRenderingContext2D, s: DiamondShape, sele
   ctx.closePath();
   applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth);
   drawLabel(ctx, s.label, cx, cy);
-  if (selected) selectionBox(ctx, s.x, s.y, s.width, s.height);
 }
 
-export function drawText(ctx: CanvasRenderingContext2D, s: TextShape, selected: boolean): void {
+export function drawText(ctx: CanvasRenderingContext2D, s: TextShape): void {
   ctx.save();
   ctx.font = `${s.fontSize}px Inter, system-ui, sans-serif`;
   ctx.fillStyle = s.strokeColor;
   ctx.textBaseline = 'top';
   ctx.fillText(s.label, s.x, s.y);
   ctx.restore();
-  if (selected) selectionBox(ctx, s.x, s.y, s.width, s.height);
 }
 
-export function drawDatabase(ctx: CanvasRenderingContext2D, s: DatabaseShape, selected: boolean): void {
+export function drawDatabase(ctx: CanvasRenderingContext2D, s: DatabaseShape): void {
   const rx = s.width / 2;
   const ry = 10;
   const cx = s.x + rx;
@@ -95,15 +89,16 @@ export function drawDatabase(ctx: CanvasRenderingContext2D, s: DatabaseShape, se
   ctx.beginPath();
   ctx.moveTo(s.x, top + ry);
   ctx.lineTo(s.x, bottom - ry);
-  ctx.ellipse(cx, bottom - ry, rx, ry, 0, 0, Math.PI);
+  // Arc from left (PI) clockwise through bottom to right (2*PI) so we end at the right edge
+  // counterclockwise from PI (left) → PI/2 (bottom) → 0 (right) — ends at right edge
+  ctx.ellipse(cx, bottom - ry, rx, ry, 0, Math.PI, 0, true);
   ctx.lineTo(s.x + s.width, top + ry);
   applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth);
 
   drawLabel(ctx, s.label, cx, top + s.height / 2 + ry);
-  if (selected) selectionBox(ctx, s.x, s.y, s.width, s.height);
 }
 
-export function drawCylinder(ctx: CanvasRenderingContext2D, s: CylinderShape, selected: boolean): void {
+export function drawCylinder(ctx: CanvasRenderingContext2D, s: CylinderShape): void {
   const rx = s.width / 2;
   const ry = 8;
   const cx = s.x + rx;
@@ -113,7 +108,8 @@ export function drawCylinder(ctx: CanvasRenderingContext2D, s: CylinderShape, se
   ctx.beginPath();
   ctx.moveTo(s.x, top + ry);
   ctx.lineTo(s.x, bottom - ry);
-  ctx.ellipse(cx, bottom - ry, rx, ry, 0, 0, Math.PI);
+  // counterclockwise from PI (left) → PI/2 (bottom) → 0 (right) — ends at right edge
+  ctx.ellipse(cx, bottom - ry, rx, ry, 0, Math.PI, 0, true);
   ctx.lineTo(s.x + s.width, top + ry);
   ctx.closePath();
   applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth);
@@ -123,5 +119,4 @@ export function drawCylinder(ctx: CanvasRenderingContext2D, s: CylinderShape, se
   applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth);
 
   drawLabel(ctx, s.label, cx, top + s.height / 2 + ry);
-  if (selected) selectionBox(ctx, s.x, s.y, s.width, s.height);
 }

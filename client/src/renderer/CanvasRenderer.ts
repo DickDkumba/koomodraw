@@ -10,12 +10,21 @@ import {
   drawDatabase,
   drawCylinder,
 } from './shapes/drawPrimitives';
+import { drawSelectionOverlay } from './shapes/selectionOverlay';
+
+export interface MarqueeRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
 
 export interface RenderState {
   scene: Scene;
   objects: Record<string, Shape>;
   selectedIds: Set<string>;
   ghostShape: Shape | null;
+  marqueeRect: MarqueeRect | null;
 }
 
 export class CanvasRenderer {
@@ -61,16 +70,38 @@ export class CanvasRenderer {
 
     this.drawGrid();
 
+    // Draw all shapes (no selection decoration yet)
     for (const id of scene.objectIds) {
       const shape = objects[id];
       if (!shape) continue;
-      this.drawShape(shape, selectedIds.has(id));
+      this.drawShape(shape);
     }
 
     if (ghostShape) {
       ctx.globalAlpha = 0.5;
-      this.drawShape(ghostShape, false);
+      this.drawShape(ghostShape);
       ctx.globalAlpha = 1;
+    }
+
+    // Draw selection overlays + resize handles on top of everything
+    for (const id of selectedIds) {
+      const shape = objects[id];
+      if (!shape) continue;
+      drawSelectionOverlay(ctx, shape, scene.zoom);
+    }
+
+    // Marquee selection rectangle
+    const { marqueeRect } = this.state;
+    if (marqueeRect) {
+      ctx.save();
+      ctx.strokeStyle = '#2563eb';
+      ctx.lineWidth = 1 / scene.zoom;
+      ctx.setLineDash([4 / scene.zoom, 3 / scene.zoom]);
+      ctx.fillStyle = 'rgba(37, 99, 235, 0.06)';
+      ctx.fillRect(marqueeRect.x, marqueeRect.y, marqueeRect.w, marqueeRect.h);
+      ctx.strokeRect(marqueeRect.x, marqueeRect.y, marqueeRect.w, marqueeRect.h);
+      ctx.setLineDash([]);
+      ctx.restore();
     }
 
     ctx.restore();
@@ -98,17 +129,17 @@ export class CanvasRenderer {
     ctx.restore();
   }
 
-  private drawShape(shape: Shape, selected: boolean): void {
+  private drawShape(shape: Shape): void {
     const { ctx } = this;
     switch (shape.type) {
-      case 'line':       return drawLine(ctx, shape, selected);
-      case 'arrow':      return drawArrow(ctx, shape, selected);
-      case 'rectangle':  return drawRectangle(ctx, shape, selected);
-      case 'circle':     return drawCircle(ctx, shape, selected);
-      case 'diamond':    return drawDiamond(ctx, shape, selected);
-      case 'text':       return drawText(ctx, shape, selected);
-      case 'database':   return drawDatabase(ctx, shape, selected);
-      case 'cylinder':   return drawCylinder(ctx, shape, selected);
+      case 'line':       return drawLine(ctx, shape);
+      case 'arrow':      return drawArrow(ctx, shape);
+      case 'rectangle':  return drawRectangle(ctx, shape);
+      case 'circle':     return drawCircle(ctx, shape);
+      case 'diamond':    return drawDiamond(ctx, shape);
+      case 'text':       return drawText(ctx, shape);
+      case 'database':   return drawDatabase(ctx, shape);
+      case 'cylinder':   return drawCylinder(ctx, shape);
     }
   }
 
@@ -128,7 +159,12 @@ export class CanvasRenderer {
     if (this.rafId !== null) cancelAnimationFrame(this.rafId);
   }
 
-  hitTest(worldX: number, worldY: number, objectIds: string[], objects: Record<string, Shape>): string | null {
+  hitTest(
+    worldX: number,
+    worldY: number,
+    objectIds: string[],
+    objects: Record<string, Shape>
+  ): string | null {
     for (let i = objectIds.length - 1; i >= 0; i--) {
       const shape = objects[objectIds[i]];
       if (!shape) continue;
@@ -144,13 +180,15 @@ export class CanvasRenderer {
     return null;
   }
 
-  toWorldCoords(clientX: number, clientY: number, scene: Scene): { x: number; y: number } {
+  toWorldCoords(
+    clientX: number,
+    clientY: number,
+    scene: Scene
+  ): { x: number; y: number } {
     const rect = this.canvas.getBoundingClientRect();
-    const canvasX = clientX - rect.left;
-    const canvasY = clientY - rect.top;
     return {
-      x: (canvasX - scene.viewportX) / scene.zoom,
-      y: (canvasY - scene.viewportY) / scene.zoom,
+      x: (clientX - rect.left - scene.viewportX) / scene.zoom,
+      y: (clientY - rect.top  - scene.viewportY) / scene.zoom,
     };
   }
 }
