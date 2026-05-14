@@ -1,0 +1,85 @@
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  padding: 0 12px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.app-header__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.app-header__logo {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1d4ed8;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.app-header__filename {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1e293b;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 3px 6px;
+  background: transparent;
+  min-width: 120px;
+  max-width: 240px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.app-header__filename:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.app-header__filename:focus {
+  outline: none;
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.app-header__actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.hbtn {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 5px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.hbtn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.hbtn--primary {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #ffffff;
+}
+
+.hbtn--primary:hover {
+  background: #1e40af;
+  border-color: #1e40af;
+}

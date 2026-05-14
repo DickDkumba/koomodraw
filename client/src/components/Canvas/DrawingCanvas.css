@@ -1,0 +1,12 @@
+.canvas-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.drawing-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
