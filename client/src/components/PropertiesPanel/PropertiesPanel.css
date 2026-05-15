@@ -21,6 +21,53 @@
   flex-shrink: 0;
 }
 
+/* ── Tabs ────────────────────────────────────────────────────────────────── */
+
+.props-tabs {
+  display: flex;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.props-tab {
+  flex: 1;
+  padding: 8px 6px 7px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: color 0.1s, border-color 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.props-tab:hover {
+  color: #64748b;
+}
+
+.props-tab--active {
+  color: #1d4ed8;
+  border-bottom-color: #1d4ed8;
+}
+
+.props-tab__badge {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 8px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
 .props-panel__empty {
   padding: 24px 12px;
   color: #94a3b8;
@@ -209,6 +256,124 @@
 }
 
 .props-obj-unit {
+  font-size: 10px;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.props-obj-grip {
+  font-size: 10px;
+  color: #cbd5e1;
+  cursor: grab;
+  flex-shrink: 0;
+  user-select: none;
+  width: 12px;
+  text-align: center;
+}
+
+.props-obj-row--draggable {
+  cursor: default;
+  border-radius: 3px;
+  transition: background 0.1s;
+}
+
+.props-obj-row--draggable:hover {
+  background: #f1f5f9;
+}
+
+.props-obj-row--dragging {
+  opacity: 0.4;
+}
+
+/* ── YouTube Events ─────────────────────────────────────────────────────── */
+
+.props-evt-add {
+  float: right;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 3px;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  width: 20px;
+  height: 18px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.props-evt-add:hover {
+  background: #dbeafe;
+}
+
+.props-evt-row {
+  padding: 5px 0;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.props-evt-row:last-child {
+  border-bottom: none;
+}
+
+.props-evt-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.props-evt-select {
+  font-family: inherit;
+  font-size: 11px;
+  padding: 3px 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: 3px;
+  background: #f8fafc;
+  color: #0f172a;
+  flex: 1;
+  min-width: 0;
+}
+
+.props-evt-select:focus {
+  outline: none;
+  border-color: #93c5fd;
+}
+
+.props-evt-time {
+  width: 48px !important;
+  flex: 0 0 48px;
+}
+
+.props-evt-del {
+  background: none;
+  border: 1px solid #fecaca;
+  border-radius: 3px;
+  color: #dc2626;
+  font-size: 13px;
+  line-height: 1;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.props-evt-del:hover {
+  background: #fef2f2;
+}
+
+.props-evt-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  width: 30px;
+  flex-shrink: 0;
+}
+
+.props-evt-unit {
   font-size: 10px;
   color: #94a3b8;
   flex-shrink: 0;

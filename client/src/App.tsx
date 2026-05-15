@@ -8,21 +8,24 @@ import { SceneBar } from './components/SceneBar/SceneBar';
 import { DocumentView } from './components/DocumentView/DocumentView';
 import { ExamplesModal } from './components/Examples/ExamplesModal';
 import { RecordingBar } from './components/RecordingBar/RecordingBar';
+import { useSceneStore } from './store/sceneStore';
 import './App.css';
 
 export default function App() {
   const [docViewOpen,   setDocViewOpen]   = useState(false);
   const [examplesOpen,  setExamplesOpen]  = useState(false);
+  const appMode = useSceneStore((s) => s.appMode);
+  const isPlay = appMode === 'play';
 
   return (
     <div className="app">
       <Header onOpenDocument={() => setDocViewOpen(true)} onOpenExamples={() => setExamplesOpen(true)} />
       <div className="app__workspace">
-        <Toolbar />
+        {!isPlay && <Toolbar />}
         <DrawingCanvas />
-        <PropertiesPanel />
+        {!isPlay && <PropertiesPanel />}
       </div>
-      <SceneBar />
+      {!isPlay && <SceneBar />}
       <RecordingBar />
       <FileManager />
       <DocumentView isOpen={docViewOpen} onClose={() => setDocViewOpen(false)} />

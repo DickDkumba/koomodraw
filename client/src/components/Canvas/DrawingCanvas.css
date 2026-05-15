@@ -47,3 +47,91 @@
 .ctx-menu__item:hover {
   background: #f1f5f9;
 }
+
+/* ── YouTube overlay ─────────────────────────────────────────────────────── */
+
+.yt-overlay-border {
+  border: 2px solid #3b82f6;
+}
+
+.yt-overlay-border--active {
+  border-color: #22c55e;
+}
+
+.yt-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #ffffff;
+  border: 2px solid #3b82f6;
+  border-radius: 2px;
+}
+
+.yt-overlay-border--active .yt-handle {
+  border-color: #22c55e;
+}
+
+.yt-handle--tl { top: -5px;  left: -5px; }
+.yt-handle--tr { top: -5px;  right: -5px; }
+.yt-handle--bl { bottom: -5px; left: -5px; }
+.yt-handle--br { bottom: -5px; right: -5px; }
+
+.yt-shield-label {
+  background: rgba(15, 23, 42, 0.75);
+  color: #f8fafc;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.yt-shield-label--active {
+  background: rgba(34, 197, 94, 0.85);
+}
+
+/* ── YouTube controls bar ────────────────────────────────────────────────── */
+
+.yt-controls {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.82);
+  border-radius: 6px;
+  padding: 4px 6px;
+  backdrop-filter: blur(4px);
+}
+
+.yt-controls__btn {
+  border: none;
+  background: transparent;
+  color: #f8fafc;
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.yt-controls__btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.yt-controls__play {
+  font-size: 16px;
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.yt-controls__enter {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 10px;
+  white-space: nowrap;
+}

@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { useSceneStore } from '../../store/sceneStore';
 import { useObjectStore } from '../../store/objectStore';
 import { CanvasRenderer } from '../../renderer/CanvasRenderer';
-import type { Shape, ShapeType } from '../../types/shapes';
+import type { Shape, ShapeType, GroupShape } from '../../types/shapes';
 import {
   hitTestHandle,
   applyResize,
@@ -14,6 +14,8 @@ import {
 import { makeShape } from './useShapeFactory';
 import { useRecordingStore } from '../../store/recordingStore';
 import type { Keyframe } from '../../store/recordingStore';
+import { YouTubeOverlay, setActiveYouTubeId } from './YouTubeOverlay';
+import { dispatchShapeEvents } from '../../store/youtubeEventDispatcher';
 import './DrawingCanvas.css';
 
 type InteractionMode = 'idle' | 'move' | 'resize' | 'rotate' | 'marquee';
@@ -79,6 +81,7 @@ export function DrawingCanvas() {
   const scene = useSceneStore((s) => s.scene);
   const selectedIds = useSceneStore((s) => s.selectedIds);
   const activeTool = useSceneStore((s) => s.activeTool);
+  const appMode = useSceneStore((s) => s.appMode);
   const selectObject = useSceneStore((s) => s.selectObject);
   const clearSelection = useSceneStore((s) => s.clearSelection);
   const addObjectToScene = useSceneStore((s) => s.addObjectToScene);
@@ -117,12 +120,12 @@ export function DrawingCanvas() {
     rendererRef.current?.update({
       scene,
       objects,
-      selectedIds,
+      selectedIds: appMode === 'play' ? new Set<string>() : selectedIds,
       ghostShape: null,
       marqueeRect: null,
       playbackTime,
     });
-  }, [scene, objects, selectedIds, isPlaying, isRecording, recTime]);
+  }, [scene, objects, selectedIds, isPlaying, isRecording, recTime, appMode]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   const addShapeAt = useCallback(
@@ -152,6 +155,18 @@ export function DrawingCanvas() {
       const renderer = rendererRef.current;
       if (!renderer) return;
       const world = renderer.toWorldCoords(e.clientX, e.clientY, scene);
+
+      // ── Play mode: fire click events, no selection/editing ──
+      if (appMode === 'play') {
+        const hit = renderer.hitTest(world.x, world.y, scene.objectIds, objects);
+        if (hit) {
+          const shape = objects[hit];
+          if (shape?.events && shape.events.length > 0) {
+            dispatchShapeEvents(shape.events, 'click', undefined, hit);
+          }
+        }
+        return;
+      }
 
       // 1. Drawing tool → place shape
       if (activeTool && activeTool !== 'select') {
@@ -212,15 +227,20 @@ export function DrawingCanvas() {
           selectObject(hit, e.shiftKey);
         }
 
-        // Snapshot ALL currently selected (+ the newly clicked one)
+        // Snapshot ALL currently selected (+ the newly clicked one), including group children
         const currentSelected = useSceneStore.getState().selectedIds;
         const snap: Record<string, Shape> = {};
-        for (const id of currentSelected) {
+        const snapShape = (id: string) => {
           const s = objects[id];
-          if (s) snap[id] = { ...s } as Shape;
-        }
+          if (!s || snap[id]) return;
+          snap[id] = { ...s } as Shape;
+          if (s.type === 'group') {
+            for (const cid of (s as GroupShape).childIds) snapShape(cid);
+          }
+        };
+        for (const id of currentSelected) snapShape(id);
         // Always include the clicked shape
-        if (objects[hit]) snap[hit] = { ...objects[hit] } as Shape;
+        snapShape(hit);
 
         interactionRef.current = {
           mode: 'move',
@@ -244,7 +264,7 @@ export function DrawingCanvas() {
       marqueeStartRef.current = { x: world.x, y: world.y };
       interactionRef.current = { ...IDLE, mode: 'marquee', startX: world.x, startY: world.y };
     },
-    [activeTool, scene, objects, selectedIds, selectObject, clearSelection, addShapeAt, snapshotSelected]
+    [activeTool, scene, objects, selectedIds, selectObject, clearSelection, addShapeAt, snapshotSelected, appMode]
   );
 
   // ── Mouse move ─────────────────────────────────────────────────────────────
@@ -259,8 +279,8 @@ export function DrawingCanvas() {
       if (ix.mode === 'move') {
         const dx = world.x - ix.startX;
         const dy = world.y - ix.startY;
-        for (const [id, orig] of Object.entries(ix.origShapes)) {
-          if (isLinear(orig as Shape)) {
+        const moveShape = (id: string, orig: Shape) => {
+          if (isLinear(orig)) {
             const lin = orig as import('../../types/shapes').LineShape;
             updateObject(id, {
               x: orig.x + dx,
@@ -272,6 +292,17 @@ export function DrawingCanvas() {
             });
           } else {
             updateObject(id, { x: orig.x + dx, y: orig.y + dy });
+          }
+        };
+        for (const [id, orig] of Object.entries(ix.origShapes)) {
+          moveShape(id, orig as Shape);
+          // If this is a group, move all children too
+          if (orig.type === 'group') {
+            const grp = orig as GroupShape;
+            for (const childId of grp.childIds) {
+              const childOrig = ix.origShapes[childId];
+              if (childOrig) moveShape(childId, childOrig as Shape);
+            }
           }
         }
 
@@ -351,19 +382,31 @@ export function DrawingCanvas() {
       // ── Cursor hover (idle) ──
       if (activeTool === 'select' || activeTool === null) {
         let cursor = 'default';
-        for (const id of selectedIds) {
-          const shape = objects[id];
-          if (!shape) continue;
-          const hi = hitTestHandle(world.x, world.y, shape, scene.zoom);
-          if (hi !== null) {
-            cursor = isLinear(shape) ? 'crosshair' : handleCursor(hi);
-            break;
-          }
-        }
-        // Show move cursor over any unselected shape
-        if (cursor === 'default') {
+
+        if (appMode === 'play') {
+          // In play mode, show pointer on shapes with click events
           const hit = renderer.hitTest(world.x, world.y, scene.objectIds, objects);
-          if (hit) cursor = 'move';
+          if (hit) {
+            const shape = objects[hit];
+            if (shape?.events?.some((e) => e.trigger === 'click')) {
+              cursor = 'pointer';
+            }
+          }
+        } else {
+          for (const id of selectedIds) {
+            const shape = objects[id];
+            if (!shape) continue;
+            const hi = hitTestHandle(world.x, world.y, shape, scene.zoom);
+            if (hi !== null) {
+              cursor = isLinear(shape) ? 'crosshair' : handleCursor(hi);
+              break;
+            }
+          }
+          // Show move cursor over any unselected shape
+          if (cursor === 'default') {
+            const hit = renderer.hitTest(world.x, world.y, scene.objectIds, objects);
+            if (hit) cursor = 'move';
+          }
         }
         if (cursor !== cursorRef.current) {
           cursorRef.current = cursor;
@@ -371,7 +414,7 @@ export function DrawingCanvas() {
         }
       }
     },
-    [scene, objects, selectedIds, activeTool, updateObject]
+    [scene, objects, selectedIds, activeTool, updateObject, appMode]
   );
 
   // ── Mouse up ───────────────────────────────────────────────────────────────
@@ -474,11 +517,20 @@ export function DrawingCanvas() {
       const newId = crypto.randomUUID();
       let clone: Shape;
 
+      // Generate a name for the clone
+      const allObjs = useObjectStore.getState().objects;
+      let typeCount = 0;
+      for (const o of Object.values(allObjs)) {
+        if (o.type === orig.type) typeCount++;
+      }
+      const cloneName = `${orig.type}_${typeCount + 1}`;
+
       if (isLinear(orig)) {
         const lin = orig as import('../../types/shapes').LineShape;
         clone = {
           ...orig,
           id: newId,
+          name: cloneName,
           selected: false,
           x: orig.x + offset,
           y: orig.y + offset,
@@ -488,7 +540,7 @@ export function DrawingCanvas() {
           ],
         } as Shape;
       } else {
-        clone = { ...orig, id: newId, selected: false, x: orig.x + offset, y: orig.y + offset };
+        clone = { ...orig, id: newId, name: cloneName, selected: false, x: orig.x + offset, y: orig.y + offset };
       }
 
       addObject(clone);
@@ -503,6 +555,73 @@ export function DrawingCanvas() {
 
     setContextMenu(null);
   }, [contextMenu, selectedIds, objects, addObject, addObjectToScene]);
+
+  const handleGroup = useCallback(() => {
+    if (!contextMenu) return;
+
+    const idsToGroup =
+      selectedIds.size > 1 && selectedIds.has(contextMenu.shapeId)
+        ? [...selectedIds]
+        : [contextMenu.shapeId];
+
+    if (idsToGroup.length < 2) { setContextMenu(null); return; }
+
+    // Clone each selected shape as a child (not in the scene directly)
+    const childIds: string[] = [];
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    for (const id of idsToGroup) {
+      const orig = objects[id];
+      if (!orig) continue;
+      const newId = crypto.randomUUID();
+      const clone = { ...orig, id: newId, name: orig.name || orig.type, selected: false } as Shape;
+      if (isLinear(orig)) {
+        const lin = orig as import('../../types/shapes').LineShape;
+        (clone as any).points = [...lin.points];
+      }
+      addObject(clone);
+      childIds.push(newId);
+
+      minX = Math.min(minX, orig.x);
+      minY = Math.min(minY, orig.y);
+      maxX = Math.max(maxX, orig.x + orig.width);
+      maxY = Math.max(maxY, orig.y + orig.height);
+    }
+
+    // Count existing groups for naming
+    const allObjects = useObjectStore.getState().objects;
+    let groupCount = 0;
+    for (const obj of Object.values(allObjects)) {
+      if (obj.type === 'group') groupCount++;
+    }
+
+    const groupId = crypto.randomUUID();
+    const group: GroupShape = {
+      id: groupId,
+      type: 'group',
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+      name: groupCount === 0 ? 'group' : `group_${groupCount + 1}`,
+      label: '',
+      layerId: scene.layers[0]?.id ?? 'default',
+      selected: false,
+      strokeColor: 'transparent',
+      fillColor: 'transparent',
+      strokeWidth: 0,
+      childIds,
+    };
+
+    addObject(group);
+    addObjectToScene(groupId);
+
+    const store = useSceneStore.getState();
+    store.clearSelection();
+    store.selectObject(groupId);
+
+    setContextMenu(null);
+  }, [contextMenu, selectedIds, objects, scene, addObject, addObjectToScene]);
 
   // ── Keyboard: delete selected ──────────────────────────────────────────────
   useEffect(() => {
@@ -523,6 +642,23 @@ export function DrawingCanvas() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // ── Double-click: activate YouTube player ──────────────────────────────────
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      const renderer = rendererRef.current;
+      if (!renderer) return;
+      const world = renderer.toWorldCoords(e.clientX, e.clientY, scene);
+      const hit = renderer.hitTest(world.x, world.y, scene.objectIds, objects);
+      if (hit) {
+        const shape = objects[hit];
+        if (shape?.type === 'youtube') {
+          setActiveYouTubeId(hit);
+        }
+      }
+    },
+    [scene, objects]
+  );
+
   const drawingToolActive = activeTool && activeTool !== 'select';
 
   return (
@@ -539,13 +675,19 @@ export function DrawingCanvas() {
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         onContextMenu={handleContextMenu}
+        onDoubleClick={handleDoubleClick}
       />
+
+      <YouTubeOverlay />
 
       {contextMenu && (
         <>
           <div className="ctx-backdrop" onMouseDown={() => setContextMenu(null)} />
           <div className="ctx-menu" style={{ left: contextMenu.x, top: contextMenu.y }}>
             <button className="ctx-menu__item" onMouseDown={handleClone}>Clone</button>
+            {selectedIds.size > 1 && selectedIds.has(contextMenu.shapeId) && (
+              <button className="ctx-menu__item" onMouseDown={handleGroup}>Group</button>
+            )}
           </div>
         </>
       )}

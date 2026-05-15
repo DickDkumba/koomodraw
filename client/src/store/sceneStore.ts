@@ -2,10 +2,16 @@ import { create } from 'zustand';
 import { DEFAULT_LAYER_ID, type Scene } from '../types/scene';
 import type { ShapeType } from '../types/shapes';
 
+type AppMode = 'edit' | 'play';
+
 interface SceneStore {
   // Document-level
   fileId: string;
   fileName: string;
+
+  // App mode
+  appMode: AppMode;
+  setAppMode: (mode: AppMode) => void;
 
   // Multi-scene
   scenes: Scene[];
@@ -33,6 +39,7 @@ interface SceneStore {
   clearSelection: () => void;
   setActiveTool: (tool: ShapeType | 'select' | null) => void;
   setViewport: (x: number, y: number, zoom: number) => void;
+  reorderObjects: (objectIds: string[]) => void;
 
   // Load / reset
   loadScene: (scene: Scene) => void;      // replace active scene (legacy single-scene load)
@@ -77,6 +84,9 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
   scene: initial,
   selectedIds: new Set(),
   activeTool: 'select',
+  appMode: 'edit',
+
+  setAppMode: (mode) => set({ appMode: mode, selectedIds: new Set() }),
 
   // ── Document ──────────────────────────────────────────────────────────────
   setFileName: (name) => set({ fileName: name }),
@@ -160,6 +170,9 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
 
   setViewport: (x, y, zoom) =>
     set((state) => patchActive(state, { viewportX: x, viewportY: y, zoom })),
+
+  reorderObjects: (objectIds) =>
+    set((state) => patchActive(state, { objectIds })),
 
   // ── Load / reset ──────────────────────────────────────────────────────────
   loadScene: (scene) =>

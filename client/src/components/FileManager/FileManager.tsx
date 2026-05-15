@@ -1,6 +1,7 @@
 import { useFileStore } from '../../store/fileStore';
 import { useSceneStore } from '../../store/sceneStore';
 import { useObjectStore } from '../../store/objectStore';
+import { useRecordingStore } from '../../store/recordingStore';
 import type { SavedFile } from '../../types/scene';
 import './FileManager.css';
 
@@ -20,6 +21,23 @@ export function FileManager() {
       const fileName = parsed.fileName ?? file.name;
       loadAll(fileName, fileId, scenes);
       setObjects(parsed.objects ?? {});
+
+      // Load recording data if present
+      if (parsed.recording) {
+        const rec = useRecordingStore.getState();
+        if (parsed.recording.keyframes) {
+          // Replace keyframes by resetting and re-adding
+          useRecordingStore.setState({
+            keyframes: parsed.recording.keyframes,
+            duration: parsed.recording.duration ?? 0,
+            timelineDuration: parsed.recording.timelineDuration ?? 30_000,
+            currentTime: 0,
+            isPlaying: false,
+            isRecording: false,
+          });
+        }
+      }
+
       closeManager();
     } catch {
       alert('Failed to load file. Data may be corrupted.');

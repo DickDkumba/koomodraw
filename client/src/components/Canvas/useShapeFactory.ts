@@ -1,11 +1,21 @@
 import type { Shape, ShapeType, Point } from '../../types/shapes';
 import { DEFAULT_LAYER_ID } from '../../types/scene';
+import { useObjectStore } from '../../store/objectStore';
 
 const DEFAULTS = {
   strokeColor: '#334155',
   fillColor: '#f8fafc',
   strokeWidth: 1.5,
 };
+
+function nextName(type: ShapeType): string {
+  const objects = useObjectStore.getState().objects;
+  let count = 0;
+  for (const obj of Object.values(objects)) {
+    if (obj.type === type) count++;
+  }
+  return count === 0 ? type : `${type}_${count + 1}`;
+}
 
 export function makeShape(type: ShapeType, x: number, y: number, w?: number, h?: number): Shape {
   const id = crypto.randomUUID();
@@ -17,6 +27,7 @@ export function makeShape(type: ShapeType, x: number, y: number, w?: number, h?:
     y,
     width,
     height,
+    name: nextName(type),
     label: '',
     layerId: DEFAULT_LAYER_ID,
     selected: false,
@@ -30,6 +41,9 @@ export function makeShape(type: ShapeType, x: number, y: number, w?: number, h?:
   }
   if (type === 'text') {
     return { ...base, type, fontSize: 14, fillColor: 'transparent', label: 'Text' } as Shape;
+  }
+  if (type === 'youtube') {
+    return { ...base, type, videoUrl: '', startTime: 0, events: [], fillColor: '#0f0f0f' } as Shape;
   }
   return { ...base, type } as Shape;
 }
@@ -45,6 +59,7 @@ function defaultWidth(type: ShapeType): number {
     case 'triangle':  return 100;
     case 'database':
     case 'cylinder':  return 80;
+    case 'youtube':   return 320;
     default:          return 120;
   }
 }
@@ -60,6 +75,7 @@ function defaultHeight(type: ShapeType): number {
     case 'triangle':  return 80;
     case 'database':
     case 'cylinder':  return 90;
+    case 'youtube':   return 180;
     default:          return 70;
   }
 }

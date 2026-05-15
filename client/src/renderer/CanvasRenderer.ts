@@ -1,4 +1,4 @@
-import type { Shape } from '../types/shapes';
+import type { Shape, GroupShape, YouTubeShape } from '../types/shapes';
 import type { Scene } from '../types/scene';
 import { drawLine } from './shapes/drawLine';
 import { drawArrow } from './shapes/drawArrow';
@@ -11,6 +11,7 @@ import {
   drawText,
   drawDatabase,
   drawCylinder,
+  drawYouTube,
 } from './shapes/drawPrimitives';
 import { drawSelectionOverlay } from './shapes/selectionOverlay';
 
@@ -78,6 +79,8 @@ export class CanvasRenderer {
     for (const id of scene.objectIds) {
       const shape = objects[id];
       if (!shape) continue;
+      // Hidden via event action (visible === false)
+      if (shape.visible === false) continue;
       // Visibility cuepoint: hide until shape.visibleFrom during playback
       if (playbackTime !== null && shape.visibleFrom !== undefined && shape.visibleFrom > playbackTime) continue;
       this.drawShape(shape);
@@ -137,6 +140,7 @@ export class CanvasRenderer {
   }
 
   private drawShape(shape: Shape): void {
+    if (shape.visible === false) return;
     const rotation = shape.rotation ?? 0;
     const isLinear = shape.type === 'line' || shape.type === 'arrow' || shape.type === 'squiggle';
 
@@ -168,6 +172,17 @@ export class CanvasRenderer {
       case 'text':       return drawText(ctx, shape);
       case 'database':   return drawDatabase(ctx, shape);
       case 'cylinder':   return drawCylinder(ctx, shape);
+      case 'youtube':    return drawYouTube(ctx, shape as YouTubeShape);
+      case 'group':      return this.drawGroup(shape as GroupShape);
+    }
+  }
+
+  private drawGroup(group: GroupShape): void {
+    if (!this.state) return;
+    const { objects } = this.state;
+    for (const childId of group.childIds) {
+      const child = objects[childId];
+      if (child && child.visible !== false) this.drawShape(child);
     }
   }
 
@@ -196,6 +211,7 @@ export class CanvasRenderer {
     for (let i = objectIds.length - 1; i >= 0; i--) {
       const shape = objects[objectIds[i]];
       if (!shape) continue;
+      if (shape.visible === false) continue;
 
       const rotation = shape.rotation ?? 0;
       const isLinear = shape.type === 'line' || shape.type === 'arrow' || shape.type === 'squiggle';

@@ -21,6 +21,7 @@ const TOOLS: ToolDef[] = [
   { type: 'text',      label: 'Text',      icon: 'T',  title: 'Text (T)' },
   { type: 'database',  label: 'Database',  icon: '⊞',  title: 'Database (B)' },
   { type: 'cylinder',  label: 'Cylinder',  icon: '⌭',  title: 'Cylinder (Y)' },
+  { type: 'youtube',   label: 'YouTube',   icon: '▶',  title: 'YouTube Video' },
 ];
 
 interface ToolbarProps {
