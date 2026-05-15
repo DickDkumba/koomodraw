@@ -14,6 +14,7 @@ const TOOLS: ToolDef[] = [
   { type: 'arrow',     label: 'Arrow',     icon: '→',  title: 'Arrow (A)' },
   { type: 'line',      label: 'Line',      icon: '╱',  title: 'Line (L)' },
   { type: 'squiggle',  label: 'Squiggle',  icon: '∿',  title: 'Squiggle line' },
+  { type: 'freedraw',  label: 'Draw',      icon: '✎',  title: 'Free draw (F)' },
   { type: 'rectangle', label: 'Rect',      icon: '▭',  title: 'Rectangle (R)' },
   { type: 'circle',    label: 'Circle',    icon: '○',  title: 'Circle (C)' },
   { type: 'diamond',   label: 'Diamond',   icon: '◇',  title: 'Diamond (D)' },

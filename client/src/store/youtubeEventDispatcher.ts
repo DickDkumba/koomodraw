@@ -91,25 +91,14 @@ function executeAction(evt: ShapeEvent): void {
       break;
     }
 
-    case 'hide_object': {
+    case 'set_opacity': {
       const tid = evt.actionTarget;
       if (tid) {
         const s = useObjectStore.getState();
         const o = s.objects[tid];
         if (o) {
-          s.setObjects({ ...s.objects, [tid]: { ...o, visible: false } as Shape });
-        }
-      }
-      break;
-    }
-
-    case 'show_object': {
-      const tid = evt.actionTarget;
-      if (tid) {
-        const s = useObjectStore.getState();
-        const o = s.objects[tid];
-        if (o) {
-          s.setObjects({ ...s.objects, [tid]: { ...o, visible: true } as Shape });
+          const opacity = Math.max(0, Math.min(1, evt.actionValue ?? 1));
+          s.setObjects({ ...s.objects, [tid]: { ...o, opacity } as Shape });
         }
       }
       break;

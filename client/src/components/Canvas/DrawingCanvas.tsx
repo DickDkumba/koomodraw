@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { useSceneStore } from '../../store/sceneStore';
 import { useObjectStore } from '../../store/objectStore';
 import { CanvasRenderer } from '../../renderer/CanvasRenderer';
-import type { Shape, ShapeType, GroupShape } from '../../types/shapes';
+import type { Shape, ShapeType, GroupShape, FreeDrawShape, Point } from '../../types/shapes';
 import {
   hitTestHandle,
   applyResize,
@@ -18,7 +18,7 @@ import { YouTubeOverlay, setActiveYouTubeId } from './YouTubeOverlay';
 import { dispatchShapeEvents } from '../../store/youtubeEventDispatcher';
 import './DrawingCanvas.css';
 
-type InteractionMode = 'idle' | 'move' | 'resize' | 'rotate' | 'marquee';
+type InteractionMode = 'idle' | 'move' | 'resize' | 'rotate' | 'marquee' | 'freedraw';
 
 interface InteractionState {
   mode: InteractionMode;
@@ -109,23 +109,20 @@ export function DrawingCanvas() {
     };
   }, []);
 
-  // Subscribe to playback state so the renderer knows about visibility cuepoints
+  // Subscribe to playback state for recording keyframe capture
   const isPlaying   = useRecordingStore((s) => s.isPlaying);
   const isRecording = useRecordingStore((s) => s.isRecording);
-  const recTime     = useRecordingStore((s) => s.currentTime);
 
   // Push latest state to renderer every time stores change
   useEffect(() => {
-    const playbackTime = (isPlaying || isRecording) ? recTime : null;
     rendererRef.current?.update({
       scene,
       objects,
       selectedIds: appMode === 'play' ? new Set<string>() : selectedIds,
       ghostShape: null,
       marqueeRect: null,
-      playbackTime,
     });
-  }, [scene, objects, selectedIds, isPlaying, isRecording, recTime, appMode]);
+  }, [scene, objects, selectedIds, isPlaying, isRecording, appMode]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   const addShapeAt = useCallback(
@@ -165,6 +162,23 @@ export function DrawingCanvas() {
             dispatchShapeEvents(shape.events, 'click', undefined, hit);
           }
         }
+        return;
+      }
+
+      // 1a. Freedraw tool → start capturing path
+      if (activeTool === 'freedraw') {
+        const shape = makeShape('freedraw', world.x, world.y);
+        (shape as FreeDrawShape).pathPoints = [{ x: world.x, y: world.y }];
+        addObject(shape);
+        addObjectToScene(shape.id);
+        selectObject(shape.id);
+        interactionRef.current = {
+          ...IDLE,
+          mode: 'freedraw',
+          shapeId: shape.id,
+          startX: world.x,
+          startY: world.y,
+        };
         return;
       }
 
@@ -323,6 +337,28 @@ export function DrawingCanvas() {
         return;
       }
 
+      // ── Freedraw ──
+      if (ix.mode === 'freedraw' && ix.shapeId) {
+        const shape = objects[ix.shapeId] as FreeDrawShape | undefined;
+        if (!shape) return;
+        const newPoints = [...shape.pathPoints, { x: world.x, y: world.y }];
+        // Update bounding box
+        const xs = newPoints.map((p) => p.x);
+        const ys = newPoints.map((p) => p.y);
+        const minX = Math.min(...xs);
+        const minY = Math.min(...ys);
+        const maxX = Math.max(...xs);
+        const maxY = Math.max(...ys);
+        updateObject(ix.shapeId, {
+          pathPoints: newPoints,
+          x: minX,
+          y: minY,
+          width: Math.max(maxX - minX, 1),
+          height: Math.max(maxY - minY, 1),
+        } as Partial<Shape>);
+        return;
+      }
+
       // ── Rotation ──
       if (ix.mode === 'rotate' && ix.shapeId) {
         const shape = objects[ix.shapeId];
@@ -422,6 +458,20 @@ export function DrawingCanvas() {
     (e: React.MouseEvent) => {
       const renderer = rendererRef.current;
       const ix = interactionRef.current;
+
+      // Finalize freedraw
+      if (ix.mode === 'freedraw' && ix.shapeId) {
+        const shape = objects[ix.shapeId] as FreeDrawShape | undefined;
+        if (shape && shape.pathPoints.length < 2) {
+          // Too few points — remove the shape
+          const store = useSceneStore.getState();
+          store.removeObjectFromScene(ix.shapeId);
+          useObjectStore.getState().removeObject(ix.shapeId);
+        }
+        useSceneStore.getState().setActiveTool('select');
+        interactionRef.current = { ...IDLE };
+        return;
+      }
 
       if (ix.mode === 'marquee' && marqueeStartRef.current && renderer) {
         const world = renderer.toWorldCoords(e.clientX, e.clientY, scene);

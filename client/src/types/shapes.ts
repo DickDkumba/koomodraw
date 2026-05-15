@@ -2,6 +2,7 @@ export type ShapeType =
   | 'line'
   | 'arrow'
   | 'squiggle'
+  | 'freedraw'
   | 'rectangle'
   | 'circle'
   | 'diamond'
@@ -34,8 +35,7 @@ export type EventAction =
   | 'navigate_scene'   // navigate to a specific scene
   | 'start_youtube'    // start a YouTube player (actionTarget = youtube shape id)
   | 'stop_youtube'     // pause a YouTube player
-  | 'hide_object'      // hide an object (actionTarget = object id)
-  | 'show_object';     // show an object (actionTarget = object id)
+  | 'set_opacity';     // set opacity on an object (actionTarget = object id, actionValue = 0–1)
 
 export interface ShapeEvent {
   id: string;
@@ -43,7 +43,7 @@ export interface ShapeEvent {
   triggerTime?: number;       // seconds — only for 'time' trigger
   action: EventAction;
   actionValue?: number;       // target seconds for seek_player, scene index for navigate_scene
-  actionTarget?: string;      // target object id for start_youtube, hide_object, etc.
+  actionTarget?: string;      // target object id for start_youtube, set_opacity, etc.
 }
 
 // Keep backward compat alias
@@ -65,8 +65,7 @@ export interface BaseShape {
   layerId: string;
   selected: boolean;
   rotation?:    number;   // degrees; undefined → 0
-  visibleFrom?: number;   // ms on the timeline; undefined → always visible
-  visible?: boolean;      // runtime flag — false hides the shape; undefined/true = visible
+  opacity:      number;   // 0 = invisible, 1 = fully opaque; default 1
   events?: ShapeEvent[];
 }
 
@@ -83,6 +82,11 @@ export interface ArrowShape extends BaseShape {
 export interface SquiggleShape extends BaseShape {
   type: 'squiggle';
   points: [Point, Point];
+}
+
+export interface FreeDrawShape extends BaseShape {
+  type: 'freedraw';
+  pathPoints: Point[];
 }
 
 export interface RectangleShape extends BaseShape {
@@ -130,6 +134,7 @@ export type Shape =
   | LineShape
   | ArrowShape
   | SquiggleShape
+  | FreeDrawShape
   | RectangleShape
   | CircleShape
   | DiamondShape

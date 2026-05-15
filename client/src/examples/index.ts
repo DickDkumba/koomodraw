@@ -24,7 +24,7 @@ function arrow(
     height: Math.max(2, Math.abs(y2 - y1)),
     points: [{ x: x1, y: y1 }, { x: x2, y: y2 }],
     strokeColor: color, fillColor: 'transparent', strokeWidth: 2,
-    label: '', layerId: L, selected: false,
+    name: id, label: '', layerId: L, selected: false, opacity: 1,
   };
 }
 
@@ -35,23 +35,23 @@ function rect(
   return {
     id, type: 'rectangle', x, y, width: w, height: h, label,
     strokeColor: stroke, fillColor: fill, strokeWidth: 2,
-    layerId: L, selected: false,
+    name: id, layerId: L, selected: false, opacity: 1,
   };
 }
 
 function db(id: string, x: number, y: number, w: number, h: number, label: string, stroke: string, fill: string): DatabaseShape {
-  return { id, type: 'database', x, y, width: w, height: h, label, strokeColor: stroke, fillColor: fill, strokeWidth: 2, layerId: L, selected: false };
+  return { id, type: 'database', x, y, width: w, height: h, label, strokeColor: stroke, fillColor: fill, strokeWidth: 2, name: id, layerId: L, selected: false, opacity: 1 };
 }
 
 function cyl(id: string, x: number, y: number, w: number, h: number, label: string, stroke: string, fill: string): CylinderShape {
-  return { id, type: 'cylinder', x, y, width: w, height: h, label, strokeColor: stroke, fillColor: fill, strokeWidth: 2, layerId: L, selected: false };
+  return { id, type: 'cylinder', x, y, width: w, height: h, label, strokeColor: stroke, fillColor: fill, strokeWidth: 2, name: id, layerId: L, selected: false, opacity: 1 };
 }
 
 function txt(id: string, x: number, y: number, w: number, label: string, size = 12): TextShape {
   return {
     id, type: 'text', x, y, width: w, height: 26, label,
     strokeColor: '#94a3b8', fillColor: 'transparent', strokeWidth: 0,
-    layerId: L, selected: false, fontSize: size,
+    name: id, layerId: L, selected: false, opacity: 1, fontSize: size,
   };
 }
 

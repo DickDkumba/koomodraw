@@ -5,16 +5,12 @@ import type { Shape, ShapeType, YouTubeShape, ShapeEvent, EventTrigger, EventAct
 import './PropertiesPanel.css';
 
 const TYPE_ICON: Record<ShapeType, string> = {
-  arrow: '→', line: '╱', squiggle: '∿',
+  arrow: '→', line: '╱', squiggle: '∿', freedraw: '✎',
   rectangle: '▭', circle: '○', diamond: '◇',
   triangle: '△', text: 'T', database: '⊞', cylinder: '⌭',
   group: '▦',
   youtube: '▶',
 };
-
-function fmtMs(ms: number): string {
-  return (ms / 1000).toFixed(1);
-}
 
 type PropsTab = 'properties' | 'events';
 
@@ -79,7 +75,6 @@ export function PropertiesPanel() {
         if (!s) return null;
         const name = s.name || s.label?.trim() || s.type;
         const icon = TYPE_ICON[s.type] ?? '?';
-        const secVal = s.visibleFrom !== undefined ? fmtMs(s.visibleFrom) : '';
         return (
           <div
             key={id}
@@ -97,21 +92,15 @@ export function PropertiesPanel() {
               className="props-obj-time"
               type="number"
               min="0"
+              max="1"
               step="0.1"
-              placeholder="0"
-              title="Visible from (seconds)"
-              value={secVal}
+              title="Opacity (0–1)"
+              value={s.opacity}
               onChange={(e) => {
-                const raw = e.target.value.trim();
-                if (raw === '') {
-                  updateObject(id, { visibleFrom: undefined });
-                } else {
-                  const sec = parseFloat(raw);
-                  if (!isNaN(sec) && sec >= 0) updateObject(id, { visibleFrom: Math.round(sec * 1000) });
-                }
+                const v = parseFloat(e.target.value);
+                if (!isNaN(v) && v >= 0 && v <= 1) updateObject(id, { opacity: v });
               }}
             />
-            <span className="props-obj-unit">s</span>
           </div>
         );
       })}
@@ -224,10 +213,10 @@ export function PropertiesPanel() {
 
     const needsTarget = (action: EventAction) =>
       action === 'start_youtube' || action === 'stop_youtube' ||
-      action === 'hide_object' || action === 'show_object';
+      action === 'set_opacity';
 
     const needsValue = (action: EventAction) =>
-      action === 'seek_player' || action === 'navigate_scene';
+      action === 'seek_player' || action === 'navigate_scene' || action === 'set_opacity';
 
     return (
       <>
@@ -295,8 +284,7 @@ export function PropertiesPanel() {
                   <option value="navigate_scene">Go to scene</option>
                   <option value="start_youtube">Start YouTube</option>
                   <option value="stop_youtube">Stop YouTube</option>
-                  <option value="hide_object">Hide object</option>
-                  <option value="show_object">Show object</option>
+                  <option value="set_opacity">Set opacity</option>
                 </select>
                 <button
                   className="props-evt-del"
@@ -311,11 +299,11 @@ export function PropertiesPanel() {
                     className="props-field__input props-field__input--num props-evt-time"
                     type="number"
                     min="0"
-                    step="1"
-                    title={evt.action === 'seek_player' ? 'Seek to (seconds)' : 'Scene number (1-based)'}
-                    value={evt.actionValue ?? 0}
+                    step={evt.action === 'set_opacity' ? '0.1' : '1'}
+                    title={evt.action === 'seek_player' ? 'Seek to (seconds)' : evt.action === 'set_opacity' ? 'Opacity (0–1)' : 'Scene number (1-based)'}
+                    value={evt.actionValue ?? (evt.action === 'set_opacity' ? 1 : 0)}
                     onChange={(e) => {
-                      const v = parseInt(e.target.value, 10);
+                      const v = parseFloat(e.target.value);
                       if (!isNaN(v) && v >= 0) updateEvent(evt.id, { actionValue: v });
                     }}
                   />
@@ -467,30 +455,24 @@ export function PropertiesPanel() {
         })()}
 
         <section className="props-section">
-          <div className="props-section__title">Visibility</div>
+          <div className="props-section__title">Opacity</div>
           <label className="props-field">
-            <span className="props-field__label">@ sec</span>
+            <span className="props-field__label">Value</span>
             <input
               className="props-field__input props-field__input--num"
               type="number"
               min="0"
+              max="1"
               step="0.1"
-              placeholder="always"
-              value={shape.visibleFrom !== undefined ? fmtMs(shape.visibleFrom) : ''}
+              value={shape.opacity}
               onChange={(e) => {
-                const raw = e.target.value.trim();
-                if (raw === '') update({ visibleFrom: undefined });
-                else {
-                  const sec = parseFloat(raw);
-                  if (!isNaN(sec) && sec >= 0) update({ visibleFrom: Math.round(sec * 1000) });
-                }
+                const v = parseFloat(e.target.value);
+                if (!isNaN(v) && v >= 0 && v <= 1) update({ opacity: v });
               }}
             />
           </label>
           <span className="props-hint">
-            {shape.visibleFrom !== undefined
-              ? `Appears at ${fmtMs(shape.visibleFrom)} s`
-              : 'Always visible'}
+            {shape.opacity === 0 ? 'Invisible' : shape.opacity === 1 ? 'Fully opaque' : `${Math.round(shape.opacity * 100)}% opaque`}
           </span>
         </section>
 

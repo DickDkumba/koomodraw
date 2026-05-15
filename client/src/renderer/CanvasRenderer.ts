@@ -1,4 +1,4 @@
-import type { Shape, GroupShape, YouTubeShape } from '../types/shapes';
+import type { Shape, GroupShape, YouTubeShape, FreeDrawShape } from '../types/shapes';
 import type { Scene } from '../types/scene';
 import { drawLine } from './shapes/drawLine';
 import { drawArrow } from './shapes/drawArrow';
@@ -28,7 +28,6 @@ export interface RenderState {
   selectedIds: Set<string>;
   ghostShape: Shape | null;
   marqueeRect: MarqueeRect | null;
-  playbackTime: number | null;  // null = edit mode; number = playback ms
 }
 
 export class CanvasRenderer {
@@ -75,14 +74,10 @@ export class CanvasRenderer {
     this.drawGrid();
 
     // Draw all shapes (no selection decoration yet)
-    const { playbackTime } = this.state;
     for (const id of scene.objectIds) {
       const shape = objects[id];
       if (!shape) continue;
-      // Hidden via event action (visible === false)
-      if (shape.visible === false) continue;
-      // Visibility cuepoint: hide until shape.visibleFrom during playback
-      if (playbackTime !== null && shape.visibleFrom !== undefined && shape.visibleFrom > playbackTime) continue;
+      if (shape.opacity === 0) continue;
       this.drawShape(shape);
     }
 
@@ -140,9 +135,22 @@ export class CanvasRenderer {
   }
 
   private drawShape(shape: Shape): void {
-    if (shape.visible === false) return;
+    if (shape.opacity === 0) return;
+    const { ctx } = this;
+    const needsAlpha = shape.opacity < 1;
+    if (needsAlpha) {
+      ctx.save();
+      ctx.globalAlpha *= shape.opacity;
+    }
+    this._drawShapeTransformed(shape);
+    if (needsAlpha) {
+      ctx.restore();
+    }
+  }
+
+  private _drawShapeTransformed(shape: Shape): void {
     const rotation = shape.rotation ?? 0;
-    const isLinear = shape.type === 'line' || shape.type === 'arrow' || shape.type === 'squiggle';
+    const isLinear = shape.type === 'line' || shape.type === 'arrow' || shape.type === 'squiggle' || shape.type === 'freedraw';
 
     if (!isLinear && rotation !== 0) {
       const cx = shape.x + shape.width / 2;
@@ -173,8 +181,25 @@ export class CanvasRenderer {
       case 'database':   return drawDatabase(ctx, shape);
       case 'cylinder':   return drawCylinder(ctx, shape);
       case 'youtube':    return drawYouTube(ctx, shape as YouTubeShape);
+      case 'freedraw':   return this.drawFreeDraw(shape as FreeDrawShape);
       case 'group':      return this.drawGroup(shape as GroupShape);
     }
+  }
+
+  private drawFreeDraw(shape: FreeDrawShape): void {
+    const { ctx } = this;
+    const pts = shape.pathPoints;
+    if (pts.length < 2) return;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) {
+      ctx.lineTo(pts[i].x, pts[i].y);
+    }
+    ctx.strokeStyle = shape.strokeColor;
+    ctx.lineWidth = shape.strokeWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
   }
 
   private drawGroup(group: GroupShape): void {
@@ -182,7 +207,7 @@ export class CanvasRenderer {
     const { objects } = this.state;
     for (const childId of group.childIds) {
       const child = objects[childId];
-      if (child && child.visible !== false) this.drawShape(child);
+      if (child && child.opacity !== 0) this.drawShape(child);
     }
   }
 
@@ -211,10 +236,10 @@ export class CanvasRenderer {
     for (let i = objectIds.length - 1; i >= 0; i--) {
       const shape = objects[objectIds[i]];
       if (!shape) continue;
-      if (shape.visible === false) continue;
+      if (shape.opacity === 0) continue;
 
       const rotation = shape.rotation ?? 0;
-      const isLinear = shape.type === 'line' || shape.type === 'arrow' || shape.type === 'squiggle';
+      const isLinear = shape.type === 'line' || shape.type === 'arrow' || shape.type === 'squiggle' || shape.type === 'freedraw';
       let tx = worldX, ty = worldY;
 
       if (!isLinear && rotation !== 0) {

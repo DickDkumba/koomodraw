@@ -31,6 +31,7 @@ export function makeShape(type: ShapeType, x: number, y: number, w?: number, h?:
     label: '',
     layerId: DEFAULT_LAYER_ID,
     selected: false,
+    opacity: 1,
     ...DEFAULTS,
   };
 
@@ -38,6 +39,9 @@ export function makeShape(type: ShapeType, x: number, y: number, w?: number, h?:
     const p1: Point = { x, y };
     const p2: Point = { x: x + width, y: y + height };
     return { ...base, type, points: [p1, p2] } as Shape;
+  }
+  if (type === 'freedraw') {
+    return { ...base, type, pathPoints: [] } as Shape;
   }
   if (type === 'text') {
     return { ...base, type, fontSize: 14, fillColor: 'transparent', label: 'Text' } as Shape;
@@ -53,6 +57,7 @@ function defaultWidth(type: ShapeType): number {
     case 'line':
     case 'arrow':
     case 'squiggle':  return 120;
+    case 'freedraw':  return 0;
     case 'text':      return 80;
     case 'circle':    return 80;
     case 'diamond':
@@ -69,6 +74,7 @@ function defaultHeight(type: ShapeType): number {
     case 'line':
     case 'arrow':     return 0;
     case 'squiggle':  return 40;   // diagonal so the wave is visible immediately
+    case 'freedraw':  return 0;
     case 'text':      return 20;
     case 'circle':    return 80;
     case 'diamond':

@@ -235,7 +235,17 @@ function PlayerOverlay({ shape, left, top, width, height, isActive, isSelected }
     }
   }, [playing]);
 
-  const showControls = isSelected && !isActive && ready;
+  const handleBack = useCallback(() => {
+    if (!playerRef.current) return;
+    const t = playerRef.current.getCurrentTime();
+    playerRef.current.seekTo(Math.max(0, t - 10), true);
+  }, []);
+
+  const handleForward = useCallback(() => {
+    if (!playerRef.current) return;
+    const t = playerRef.current.getCurrentTime();
+    playerRef.current.seekTo(t + 10, true);
+  }, []);
 
   return (
     <div
@@ -280,9 +290,16 @@ function PlayerOverlay({ shape, left, top, width, height, isActive, isSelected }
         </div>
       )}
 
-      {/* Floating control bar — pointer-events: auto so buttons are clickable */}
-      {showControls && ready && (
+      {/* Floating control bar — always visible when player is ready */}
+      {!isActive && ready && (
         <div className="yt-controls" style={{ pointerEvents: 'auto' }}>
+          <button
+            className="yt-controls__btn"
+            title="Back 10s"
+            onClick={handleBack}
+          >
+            ⏪
+          </button>
           <button
             className="yt-controls__btn yt-controls__play"
             title={playing ? 'Pause' : 'Play'}
@@ -291,11 +308,11 @@ function PlayerOverlay({ shape, left, top, width, height, isActive, isSelected }
             {playing ? '⏸' : '▶'}
           </button>
           <button
-            className="yt-controls__btn yt-controls__enter"
-            title="Enter player — full YouTube controls"
-            onClick={() => setActiveYouTubeId(shape.id)}
+            className="yt-controls__btn"
+            title="Forward 10s"
+            onClick={handleForward}
           >
-            Open Controls
+            ⏩
           </button>
         </div>
       )}
