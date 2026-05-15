@@ -1,9 +1,11 @@
 export type ShapeType =
   | 'line'
   | 'arrow'
+  | 'squiggle'
   | 'rectangle'
   | 'circle'
   | 'diamond'
+  | 'triangle'
   | 'text'
   | 'database'
   | 'cylinder';
@@ -26,6 +28,8 @@ export interface BaseShape {
   label: string;
   layerId: string;
   selected: boolean;
+  rotation?:    number;   // degrees; undefined → 0
+  visibleFrom?: number;   // ms on the timeline; undefined → always visible
 }
 
 export interface LineShape extends BaseShape {
@@ -35,6 +39,11 @@ export interface LineShape extends BaseShape {
 
 export interface ArrowShape extends BaseShape {
   type: 'arrow';
+  points: [Point, Point];
+}
+
+export interface SquiggleShape extends BaseShape {
+  type: 'squiggle';
   points: [Point, Point];
 }
 
@@ -48,6 +57,10 @@ export interface CircleShape extends BaseShape {
 
 export interface DiamondShape extends BaseShape {
   type: 'diamond';
+}
+
+export interface TriangleShape extends BaseShape {
+  type: 'triangle';
 }
 
 export interface TextShape extends BaseShape {
@@ -66,9 +79,11 @@ export interface CylinderShape extends BaseShape {
 export type Shape =
   | LineShape
   | ArrowShape
+  | SquiggleShape
   | RectangleShape
   | CircleShape
   | DiamondShape
+  | TriangleShape
   | TextShape
   | DatabaseShape
   | CylinderShape;

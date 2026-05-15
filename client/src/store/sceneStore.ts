@@ -19,7 +19,7 @@ interface SceneStore {
   setFileName: (name: string) => void;
 
   // Scene tab management
-  addScene: (mode: 'clear' | 'inherit') => void;
+  addScene: (mode: 'clear' | 'inherit', objectIds?: string[]) => void;
   removeScene: (id: string) => void;
   activateScene: (id: string) => void;
   renameScene: (id: string, name: string) => void;
@@ -82,12 +82,13 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
   setFileName: (name) => set({ fileName: name }),
 
   // ── Scene tabs ────────────────────────────────────────────────────────────
-  addScene: (mode) =>
+  addScene: (mode, objectIds?) =>
     set((state) => {
       const num = state.scenes.length + 1;
       const src = state.scenes[state.activeSceneIndex];
       const newScene = makeScene(`Scene ${num}`);
-      if (mode === 'inherit') newScene.objectIds = [...src.objectIds];
+      if (objectIds)              newScene.objectIds = objectIds;
+      else if (mode === 'inherit') newScene.objectIds = [...src.objectIds];
       const scenes = [...state.scenes, newScene];
       const idx = scenes.length - 1;
       return { scenes, activeSceneIndex: idx, scene: newScene, selectedIds: new Set() };

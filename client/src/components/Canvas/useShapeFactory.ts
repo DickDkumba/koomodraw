@@ -23,7 +23,7 @@ export function makeShape(type: ShapeType, x: number, y: number, w?: number, h?:
     ...DEFAULTS,
   };
 
-  if (type === 'line' || type === 'arrow') {
+  if (type === 'line' || type === 'arrow' || type === 'squiggle') {
     const p1: Point = { x, y };
     const p2: Point = { x: x + width, y: y + height };
     return { ...base, type, points: [p1, p2] } as Shape;
@@ -37,10 +37,12 @@ export function makeShape(type: ShapeType, x: number, y: number, w?: number, h?:
 function defaultWidth(type: ShapeType): number {
   switch (type) {
     case 'line':
-    case 'arrow':     return 120;
+    case 'arrow':
+    case 'squiggle':  return 120;
     case 'text':      return 80;
     case 'circle':    return 80;
-    case 'diamond':   return 100;
+    case 'diamond':
+    case 'triangle':  return 100;
     case 'database':
     case 'cylinder':  return 80;
     default:          return 120;
@@ -51,9 +53,11 @@ function defaultHeight(type: ShapeType): number {
   switch (type) {
     case 'line':
     case 'arrow':     return 0;
+    case 'squiggle':  return 40;   // diagonal so the wave is visible immediately
     case 'text':      return 20;
     case 'circle':    return 80;
-    case 'diamond':   return 70;
+    case 'diamond':
+    case 'triangle':  return 80;
     case 'database':
     case 'cylinder':  return 90;
     default:          return 70;

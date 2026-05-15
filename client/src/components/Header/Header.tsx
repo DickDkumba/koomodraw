@@ -7,9 +7,10 @@ import './Header.css';
 
 interface HeaderProps {
   onOpenDocument: () => void;
+  onOpenExamples: () => void;
 }
 
-export function Header({ onOpenDocument }: HeaderProps) {
+export function Header({ onOpenDocument, onOpenExamples }: HeaderProps) {
   const fileName = useSceneStore((s) => s.fileName);
   const fileId   = useSceneStore((s) => s.fileId);
   const scenes   = useSceneStore((s) => s.scenes);
@@ -72,6 +73,9 @@ export function Header({ onOpenDocument }: HeaderProps) {
       </div>
 
       <nav className="app-header__actions">
+        <button className="hbtn" onClick={onOpenExamples} title="Browse example documents">
+          Examples
+        </button>
         <button className="hbtn" onClick={handleNew} title="New document">
           New
         </button>

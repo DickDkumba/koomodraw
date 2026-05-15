@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useSceneStore } from '../../store/sceneStore';
 import { useObjectStore } from '../../store/objectStore';
 import { CanvasRenderer } from '../../renderer/CanvasRenderer';
@@ -12,24 +12,25 @@ import {
   type HandleIndex,
 } from '../../renderer/shapes/selectionOverlay';
 import { makeShape } from './useShapeFactory';
+import { useRecordingStore } from '../../store/recordingStore';
+import type { Keyframe } from '../../store/recordingStore';
 import './DrawingCanvas.css';
 
-type InteractionMode = 'idle' | 'move' | 'resize' | 'marquee';
+type InteractionMode = 'idle' | 'move' | 'resize' | 'rotate' | 'marquee';
 
 interface InteractionState {
   mode: InteractionMode;
-  // For resize / single-shape tracking
   shapeId: string | null;
   handleIndex: HandleIndex | null;
   startX: number;
   startY: number;
-  // For box resize — original bounds
   origX: number;
   origY: number;
   origWidth: number;
   origHeight: number;
-  // For group move — snapshot of every selected shape at drag start
   origShapes: Record<string, Shape>;
+  origRotation: number;
+  dragStartAngle: number;
 }
 
 const IDLE: InteractionState = {
@@ -43,6 +44,8 @@ const IDLE: InteractionState = {
   origWidth: 0,
   origHeight: 0,
   origShapes: {},
+  origRotation: 0,
+  dragStartAngle: 0,
 };
 
 // Compute the normalised (positive w/h) rect from two corner points
@@ -70,6 +73,8 @@ export function DrawingCanvas() {
   const interactionRef = useRef<InteractionState>(IDLE);
   const marqueeStartRef = useRef<{ x: number; y: number } | null>(null);
   const cursorRef = useRef<string>('default');
+
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string } | null>(null);
 
   const scene = useSceneStore((s) => s.scene);
   const selectedIds = useSceneStore((s) => s.selectedIds);
@@ -101,16 +106,23 @@ export function DrawingCanvas() {
     };
   }, []);
 
+  // Subscribe to playback state so the renderer knows about visibility cuepoints
+  const isPlaying   = useRecordingStore((s) => s.isPlaying);
+  const isRecording = useRecordingStore((s) => s.isRecording);
+  const recTime     = useRecordingStore((s) => s.currentTime);
+
   // Push latest state to renderer every time stores change
   useEffect(() => {
+    const playbackTime = (isPlaying || isRecording) ? recTime : null;
     rendererRef.current?.update({
       scene,
       objects,
       selectedIds,
       ghostShape: null,
       marqueeRect: null,
+      playbackTime,
     });
-  }, [scene, objects, selectedIds]);
+  }, [scene, objects, selectedIds, isPlaying, isRecording, recTime]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   const addShapeAt = useCallback(
@@ -136,6 +148,7 @@ export function DrawingCanvas() {
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (e.button !== 0) return;
+      canvasRef.current?.focus();
       const renderer = rendererRef.current;
       if (!renderer) return;
       const world = renderer.toWorldCoords(e.clientX, e.clientY, scene);
@@ -147,24 +160,46 @@ export function DrawingCanvas() {
         return;
       }
 
-      // 2. Check resize / endpoint handles on selected shapes
+      // 2. Check resize / rotate / endpoint handles on selected shapes
       for (const id of selectedIds) {
         const shape = objects[id];
         if (!shape) continue;
         const hi = hitTestHandle(world.x, world.y, shape, scene.zoom);
         if (hi !== null) {
-          interactionRef.current = {
-            mode: 'resize',
-            shapeId: id,
-            handleIndex: hi,
-            startX: world.x,
-            startY: world.y,
-            origX: shape.x,
-            origY: shape.y,
-            origWidth: shape.width,
-            origHeight: shape.height,
-            origShapes: {},
-          };
+          if (hi === 8) {
+            // Rotation handle
+            const cx = shape.x + shape.width / 2;
+            const cy = shape.y + shape.height / 2;
+            interactionRef.current = {
+              mode: 'rotate',
+              shapeId: id,
+              handleIndex: hi,
+              startX: world.x,
+              startY: world.y,
+              origX: shape.x,
+              origY: shape.y,
+              origWidth: shape.width,
+              origHeight: shape.height,
+              origShapes: {},
+              origRotation: shape.rotation ?? 0,
+              dragStartAngle: Math.atan2(world.y - cy, world.x - cx),
+            };
+          } else {
+            interactionRef.current = {
+              mode: 'resize',
+              shapeId: id,
+              handleIndex: hi,
+              startX: world.x,
+              startY: world.y,
+              origX: shape.x,
+              origY: shape.y,
+              origWidth: shape.width,
+              origHeight: shape.height,
+              origShapes: {},
+              origRotation: 0,
+              dragStartAngle: 0,
+            };
+          }
           return;
         }
       }
@@ -198,6 +233,8 @@ export function DrawingCanvas() {
           origWidth: objects[hit]?.width ?? 0,
           origHeight: objects[hit]?.height ?? 0,
           origShapes: snap,
+          origRotation: 0,
+          dragStartAngle: 0,
         };
         return;
       }
@@ -237,6 +274,33 @@ export function DrawingCanvas() {
             updateObject(id, { x: orig.x + dx, y: orig.y + dy });
           }
         }
+
+        // Capture keyframes if recording
+        const rec = useRecordingStore.getState();
+        if (rec.isRecording) {
+          const t   = rec.timeOffset + (Date.now() - rec.epochStart);
+          const obs = useObjectStore.getState().objects;
+          for (const id of Object.keys(ix.origShapes)) {
+            const s = obs[id];
+            if (!s) continue;
+            const kf: Keyframe = { t, objectId: id, x: s.x, y: s.y };
+            if ('points' in s) kf.points = (s as any).points;
+            rec.addKeyframe(kf);
+          }
+        }
+
+        return;
+      }
+
+      // ── Rotation ──
+      if (ix.mode === 'rotate' && ix.shapeId) {
+        const shape = objects[ix.shapeId];
+        if (!shape) return;
+        const cx = shape.x + shape.width / 2;
+        const cy = shape.y + shape.height / 2;
+        const currentAngle = Math.atan2(world.y - cy, world.x - cx);
+        const delta = (currentAngle - ix.dragStartAngle) * (180 / Math.PI);
+        updateObject(ix.shapeId, { rotation: ix.origRotation + delta });
         return;
       }
 
@@ -378,6 +442,68 @@ export function DrawingCanvas() {
     [scene, addShapeAt]
   );
 
+  // ── Context menu (right-click) ────────────────────────────────────────────
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      const renderer = rendererRef.current;
+      if (!renderer) return;
+      const world = renderer.toWorldCoords(e.clientX, e.clientY, scene);
+      const hit = renderer.hitTest(world.x, world.y, scene.objectIds, objects);
+      if (hit) setContextMenu({ x: e.clientX, y: e.clientY, shapeId: hit });
+    },
+    [scene, objects]
+  );
+
+  const handleClone = useCallback(() => {
+    if (!contextMenu) return;
+
+    // If the right-clicked shape is part of a multi-selection, clone all selected;
+    // otherwise clone just the right-clicked shape.
+    const idsToClone =
+      selectedIds.size > 1 && selectedIds.has(contextMenu.shapeId)
+        ? [...selectedIds]
+        : [contextMenu.shapeId];
+
+    const offset = 20;
+    const newIds: string[] = [];
+
+    for (const id of idsToClone) {
+      const orig = objects[id];
+      if (!orig) continue;
+      const newId = crypto.randomUUID();
+      let clone: Shape;
+
+      if (isLinear(orig)) {
+        const lin = orig as import('../../types/shapes').LineShape;
+        clone = {
+          ...orig,
+          id: newId,
+          selected: false,
+          x: orig.x + offset,
+          y: orig.y + offset,
+          points: [
+            { x: lin.points[0].x + offset, y: lin.points[0].y + offset },
+            { x: lin.points[1].x + offset, y: lin.points[1].y + offset },
+          ],
+        } as Shape;
+      } else {
+        clone = { ...orig, id: newId, selected: false, x: orig.x + offset, y: orig.y + offset };
+      }
+
+      addObject(clone);
+      addObjectToScene(newId);
+      newIds.push(newId);
+    }
+
+    // Select all new clones
+    const store = useSceneStore.getState();
+    store.clearSelection();
+    newIds.forEach((id) => store.selectObject(id, true));
+
+    setContextMenu(null);
+  }, [contextMenu, selectedIds, objects, addObject, addObjectToScene]);
+
   // ── Keyboard: delete selected ──────────────────────────────────────────────
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -404,14 +530,25 @@ export function DrawingCanvas() {
       <canvas
         ref={canvasRef}
         className="drawing-canvas"
-        style={{ cursor: drawingToolActive ? 'crosshair' : undefined }}
+        tabIndex={-1}
+        style={{ cursor: drawingToolActive ? 'crosshair' : undefined, outline: 'none' }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
+        onContextMenu={handleContextMenu}
       />
+
+      {contextMenu && (
+        <>
+          <div className="ctx-backdrop" onMouseDown={() => setContextMenu(null)} />
+          <div className="ctx-menu" style={{ left: contextMenu.x, top: contextMenu.y }}>
+            <button className="ctx-menu__item" onMouseDown={handleClone}>Clone</button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

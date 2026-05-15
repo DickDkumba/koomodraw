@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSceneStore } from '../../store/sceneStore';
+import { useObjectStore } from '../../store/objectStore';
 import './SceneBar.css';
 
 export function SceneBar() {
@@ -45,8 +46,21 @@ export function SceneBar() {
     }
   }
 
-  function handleAddScene(mode: 'clear' | 'inherit') {
-    addScene(mode);
+  function handleAddScene(mode: 'clear' | 'inherit' | 'clone') {
+    if (mode === 'clone') {
+      const { objects, addObject } = useObjectStore.getState();
+      const srcIds = scenes[activeIndex].objectIds;
+      const newIds = srcIds.flatMap((id) => {
+        const orig = objects[id];
+        if (!orig) return [];
+        const copy = { ...orig, id: crypto.randomUUID(), selected: false };
+        addObject(copy);
+        return [copy.id];
+      });
+      addScene('clear', newIds);
+    } else {
+      addScene(mode);
+    }
     setShowAddMenu(false);
   }
 
@@ -140,7 +154,14 @@ export function SceneBar() {
               <span className="scene-add-menu__icon">⊞</span>
               <span>
                 <strong>Inherit</strong>
-                <span className="scene-add-menu__desc">Copy current scene's objects</span>
+                <span className="scene-add-menu__desc">Share objects with current scene</span>
+              </span>
+            </button>
+            <button className="scene-add-menu__item" onClick={() => handleAddScene('clone')}>
+              <span className="scene-add-menu__icon">⧉</span>
+              <span>
+                <strong>Clone</strong>
+                <span className="scene-add-menu__desc">Independent copies of all shapes</span>
               </span>
             </button>
           </div>

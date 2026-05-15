@@ -2,6 +2,7 @@ import type {
   RectangleShape,
   CircleShape,
   DiamondShape,
+  TriangleShape,
   TextShape,
   DatabaseShape,
   CylinderShape,
@@ -96,6 +97,17 @@ export function drawDatabase(ctx: CanvasRenderingContext2D, s: DatabaseShape): v
   applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth);
 
   drawLabel(ctx, s.label, cx, top + s.height / 2 + ry);
+}
+
+export function drawTriangle(ctx: CanvasRenderingContext2D, s: TriangleShape): void {
+  const cx = s.x + s.width / 2;
+  ctx.beginPath();
+  ctx.moveTo(cx,        s.y);           // apex
+  ctx.lineTo(s.x + s.width, s.y + s.height);  // bottom-right
+  ctx.lineTo(s.x,       s.y + s.height);       // bottom-left
+  ctx.closePath();
+  applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth);
+  drawLabel(ctx, s.label, cx, s.y + s.height * 0.65);
 }
 
 export function drawCylinder(ctx: CanvasRenderingContext2D, s: CylinderShape): void {
