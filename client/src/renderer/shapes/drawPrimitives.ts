@@ -7,19 +7,24 @@ import type {
   DatabaseShape,
   CylinderShape,
   YouTubeShape,
+  StrokeDash,
 } from '../../types/shapes';
+import { applyDash } from './strokeUtils';
 
 function applyFillStroke(
   ctx: CanvasRenderingContext2D,
   fillColor: string,
   strokeColor: string,
-  strokeWidth: number
+  strokeWidth: number,
+  strokeDash?: StrokeDash
 ): void {
   ctx.fillStyle = fillColor;
   ctx.strokeStyle = strokeColor;
   ctx.lineWidth = strokeWidth;
+  applyDash(ctx, strokeDash, strokeWidth);
   ctx.fill();
   ctx.stroke();
+  ctx.setLineDash([]);
 }
 
 function drawLabel(
@@ -42,7 +47,7 @@ function drawLabel(
 export function drawRectangle(ctx: CanvasRenderingContext2D, s: RectangleShape): void {
   ctx.beginPath();
   ctx.roundRect(s.x, s.y, s.width, s.height, 4);
-  applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth);
+  applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth, s.strokeDash);
   drawLabel(ctx, s.label, s.x + s.width / 2, s.y + s.height / 2);
 }
 
@@ -51,7 +56,7 @@ export function drawCircle(ctx: CanvasRenderingContext2D, s: CircleShape): void 
   const ry = s.height / 2;
   ctx.beginPath();
   ctx.ellipse(s.x + rx, s.y + ry, rx, ry, 0, 0, Math.PI * 2);
-  applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth);
+  applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth, s.strokeDash);
   drawLabel(ctx, s.label, s.x + rx, s.y + ry);
 }
 
@@ -64,7 +69,7 @@ export function drawDiamond(ctx: CanvasRenderingContext2D, s: DiamondShape): voi
   ctx.lineTo(cx, s.y + s.height);
   ctx.lineTo(s.x, cy);
   ctx.closePath();
-  applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth);
+  applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth, s.strokeDash);
   drawLabel(ctx, s.label, cx, cy);
 }
 
@@ -86,16 +91,14 @@ export function drawDatabase(ctx: CanvasRenderingContext2D, s: DatabaseShape): v
 
   ctx.beginPath();
   ctx.ellipse(cx, top + ry, rx, ry, 0, 0, Math.PI * 2);
-  applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth);
+  applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth, s.strokeDash);
 
   ctx.beginPath();
   ctx.moveTo(s.x, top + ry);
   ctx.lineTo(s.x, bottom - ry);
-  // Arc from left (PI) clockwise through bottom to right (2*PI) so we end at the right edge
-  // counterclockwise from PI (left) → PI/2 (bottom) → 0 (right) — ends at right edge
   ctx.ellipse(cx, bottom - ry, rx, ry, 0, Math.PI, 0, true);
   ctx.lineTo(s.x + s.width, top + ry);
-  applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth);
+  applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth, s.strokeDash);
 
   drawLabel(ctx, s.label, cx, top + s.height / 2 + ry);
 }
@@ -107,7 +110,7 @@ export function drawTriangle(ctx: CanvasRenderingContext2D, s: TriangleShape): v
   ctx.lineTo(s.x + s.width, s.y + s.height);  // bottom-right
   ctx.lineTo(s.x,       s.y + s.height);       // bottom-left
   ctx.closePath();
-  applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth);
+  applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth, s.strokeDash);
   drawLabel(ctx, s.label, cx, s.y + s.height * 0.65);
 }
 
@@ -121,15 +124,14 @@ export function drawCylinder(ctx: CanvasRenderingContext2D, s: CylinderShape): v
   ctx.beginPath();
   ctx.moveTo(s.x, top + ry);
   ctx.lineTo(s.x, bottom - ry);
-  // counterclockwise from PI (left) → PI/2 (bottom) → 0 (right) — ends at right edge
   ctx.ellipse(cx, bottom - ry, rx, ry, 0, Math.PI, 0, true);
   ctx.lineTo(s.x + s.width, top + ry);
   ctx.closePath();
-  applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth);
+  applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth, s.strokeDash);
 
   ctx.beginPath();
   ctx.ellipse(cx, top + ry, rx, ry, 0, 0, Math.PI * 2);
-  applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth);
+  applyFillStroke(ctx, s.fillColor, s.strokeColor, s.strokeWidth, s.strokeDash);
 
   drawLabel(ctx, s.label, cx, top + s.height / 2 + ry);
 }

@@ -23,7 +23,7 @@ function arrow(
     width: Math.max(2, Math.abs(x2 - x1)),
     height: Math.max(2, Math.abs(y2 - y1)),
     points: [{ x: x1, y: y1 }, { x: x2, y: y2 }],
-    strokeColor: color, fillColor: 'transparent', strokeWidth: 2,
+    strokeColor: color, fillColor: 'transparent', strokeWidth: 2, strokeDash: 'solid',
     name: id, label: '', layerId: L, selected: false, opacity: 1,
   };
 }
@@ -34,23 +34,23 @@ function rect(
 ): RectangleShape {
   return {
     id, type: 'rectangle', x, y, width: w, height: h, label,
-    strokeColor: stroke, fillColor: fill, strokeWidth: 2,
+    strokeColor: stroke, fillColor: fill, strokeWidth: 2, strokeDash: 'solid',
     name: id, layerId: L, selected: false, opacity: 1,
   };
 }
 
 function db(id: string, x: number, y: number, w: number, h: number, label: string, stroke: string, fill: string): DatabaseShape {
-  return { id, type: 'database', x, y, width: w, height: h, label, strokeColor: stroke, fillColor: fill, strokeWidth: 2, name: id, layerId: L, selected: false, opacity: 1 };
+  return { id, type: 'database', x, y, width: w, height: h, label, strokeColor: stroke, fillColor: fill, strokeWidth: 2, strokeDash: 'solid', name: id, layerId: L, selected: false, opacity: 1 };
 }
 
 function cyl(id: string, x: number, y: number, w: number, h: number, label: string, stroke: string, fill: string): CylinderShape {
-  return { id, type: 'cylinder', x, y, width: w, height: h, label, strokeColor: stroke, fillColor: fill, strokeWidth: 2, name: id, layerId: L, selected: false, opacity: 1 };
+  return { id, type: 'cylinder', x, y, width: w, height: h, label, strokeColor: stroke, fillColor: fill, strokeWidth: 2, strokeDash: 'solid', name: id, layerId: L, selected: false, opacity: 1 };
 }
 
 function txt(id: string, x: number, y: number, w: number, label: string, size = 12): TextShape {
   return {
     id, type: 'text', x, y, width: w, height: 26, label,
-    strokeColor: '#94a3b8', fillColor: 'transparent', strokeWidth: 0,
+    strokeColor: '#94a3b8', fillColor: 'transparent', strokeWidth: 0, strokeDash: 'solid',
     name: id, layerId: L, selected: false, opacity: 1, fontSize: size,
   };
 }

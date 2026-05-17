@@ -21,12 +21,16 @@ export interface Point {
 // ── Event system (all shapes) ──────────────────────────────────────────────
 
 export type EventTrigger =
-  | 'click'      // fires when shape is clicked in play mode
-  | 'time'       // fires when YouTube playback reaches a specific second
-  | 'play'       // fires when YouTube video starts playing
-  | 'pause'      // fires when YouTube video is paused
-  | 'ended'      // fires when YouTube video ends
-  | 'load';      // fires when YouTube video is loaded/ready
+  | 'click'          // fires when shape is clicked in play mode
+  | 'time'           // fires when YouTube playback reaches a specific second
+  | 'play'           // fires when YouTube video starts playing
+  | 'pause'          // fires when YouTube video is paused
+  | 'ended'          // fires when YouTube video ends
+  | 'load'           // fires when YouTube video is loaded/ready
+  | 'player_time'    // fires when scene player reaches a specific second
+  | 'player_play'    // fires when scene player starts
+  | 'player_pause'   // fires when scene player pauses
+  | 'player_ended';  // fires when scene player reaches end
 
 export type EventAction =
   | 'start_player'     // start the scene recording player
@@ -50,6 +54,8 @@ export interface ShapeEvent {
 export type YouTubeEvent = ShapeEvent;
 export type YouTubeTrigger = EventTrigger;
 
+export type StrokeDash = 'solid' | 'dashed' | 'dotted';
+
 export interface BaseShape {
   id: string;
   type: ShapeType;
@@ -60,6 +66,7 @@ export interface BaseShape {
   strokeColor: string;
   fillColor: string;
   strokeWidth: number;
+  strokeDash: StrokeDash;
   name: string;
   label: string;
   layerId: string;

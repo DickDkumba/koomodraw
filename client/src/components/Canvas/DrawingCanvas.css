@@ -48,6 +48,21 @@
   background: #f1f5f9;
 }
 
+/* ── Inline text edit ───────────────────────────────────────────────────── */
+
+.inline-text-edit {
+  box-sizing: border-box;
+  border: 2px solid #3b82f6;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 2px 4px;
+  font-family: Inter, system-ui, sans-serif;
+  color: #1e293b;
+  outline: none;
+  z-index: 50;
+  line-height: 1.2;
+}
+
 /* ── YouTube overlay ─────────────────────────────────────────────────────── */
 
 .yt-overlay-border {

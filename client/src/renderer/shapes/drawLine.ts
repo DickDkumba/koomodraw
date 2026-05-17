@@ -1,4 +1,5 @@
 import type { LineShape } from '../../types/shapes';
+import { applyDash } from './strokeUtils';
 
 export function drawLine(ctx: CanvasRenderingContext2D, shape: LineShape): void {
   const [p1, p2] = shape.points;
@@ -7,5 +8,7 @@ export function drawLine(ctx: CanvasRenderingContext2D, shape: LineShape): void 
   ctx.lineTo(p2.x, p2.y);
   ctx.strokeStyle = shape.strokeColor;
   ctx.lineWidth = shape.strokeWidth;
+  applyDash(ctx, shape.strokeDash, shape.strokeWidth);
   ctx.stroke();
+  ctx.setLineDash([]);
 }

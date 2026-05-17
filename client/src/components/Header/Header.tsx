@@ -4,6 +4,7 @@ import { useObjectStore } from '../../store/objectStore';
 import { useFileStore } from '../../store/fileStore';
 import { useRecordingStore } from '../../store/recordingStore';
 import { useEventLogStore } from '../../store/eventLogStore';
+import { useCommandStore } from '../../store/commandStore';
 import type { SavedFile } from '../../types/scene';
 import './Header.css';
 
@@ -21,6 +22,10 @@ export function Header({ onOpenDocument, onOpenExamples }: HeaderProps) {
   const setAppMode = useSceneStore((s) => s.setAppMode);
   const objects    = useObjectStore((s) => s.objects);
   const { persist, openManager } = useFileStore();
+  const canUndo = useCommandStore((s) => s.canUndo);
+  const canRedo = useCommandStore((s) => s.canRedo);
+  const undo    = useCommandStore((s) => s.undo);
+  const redo    = useCommandStore((s) => s.redo);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [logOpen, setLogOpen] = useState(false);
@@ -95,6 +100,25 @@ export function Header({ onOpenDocument, onOpenExamples }: HeaderProps) {
           onClick={() => setAppMode('play')}
         >
           Play
+        </button>
+      </div>
+
+      <div className="app-header__undo">
+        <button
+          className="hbtn"
+          onClick={undo}
+          disabled={!canUndo}
+          title="Undo (Ctrl+Z)"
+        >
+          Undo
+        </button>
+        <button
+          className="hbtn"
+          onClick={redo}
+          disabled={!canRedo}
+          title="Redo (Ctrl+Shift+Z)"
+        >
+          Redo
         </button>
       </div>
 

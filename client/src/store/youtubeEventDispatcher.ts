@@ -27,13 +27,13 @@ export function dispatchShapeEvents(
 
   for (const evt of events) {
     if (evt.trigger !== trigger) continue;
-    if (trigger === 'time' && evt.triggerTime !== undefined && currentVideoTime !== undefined) {
+    if ((trigger === 'time' || trigger === 'player_time') && evt.triggerTime !== undefined && currentVideoTime !== undefined) {
       if (Math.abs(currentVideoTime - evt.triggerTime) > 0.5) continue;
     }
 
     // Log the event
     const target = evt.actionTarget ? objects[evt.actionTarget] : null;
-    const triggerLabel = trigger === 'time' ? `time @${evt.triggerTime}s` : trigger;
+    const triggerLabel = (trigger === 'time' || trigger === 'player_time') ? `${trigger} @${evt.triggerTime}s` : trigger;
     useEventLogStore.getState().addEntry({
       trigger: triggerLabel,
       action: evt.action,

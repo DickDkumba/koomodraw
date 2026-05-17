@@ -1,4 +1,5 @@
 import type { SquiggleShape } from '../../types/shapes';
+import { applyDash } from './strokeUtils';
 
 export function drawSquiggle(ctx: CanvasRenderingContext2D, s: SquiggleShape): void {
   const [p1, p2] = s.points;
@@ -21,6 +22,7 @@ export function drawSquiggle(ctx: CanvasRenderingContext2D, s: SquiggleShape): v
   ctx.lineWidth = s.strokeWidth;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
+  applyDash(ctx, s.strokeDash, s.strokeWidth);
   ctx.beginPath();
   ctx.moveTo(p1.x, p1.y);
 

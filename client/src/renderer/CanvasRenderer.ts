@@ -199,7 +199,10 @@ export class CanvasRenderer {
     ctx.lineWidth = shape.strokeWidth;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    if (shape.strokeDash === 'dashed') ctx.setLineDash([shape.strokeWidth * 4, shape.strokeWidth * 3]);
+    else if (shape.strokeDash === 'dotted') ctx.setLineDash([shape.strokeWidth, shape.strokeWidth * 2]);
     ctx.stroke();
+    ctx.setLineDash([]);
   }
 
   private drawGroup(group: GroupShape): void {

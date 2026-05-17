@@ -1,4 +1,5 @@
 import type { ArrowShape } from '../../types/shapes';
+import { applyDash } from './strokeUtils';
 
 const HEAD_LEN = 14;
 const HEAD_ANGLE = Math.PI / 6;
@@ -12,8 +13,11 @@ export function drawArrow(ctx: CanvasRenderingContext2D, shape: ArrowShape): voi
   ctx.lineTo(p2.x, p2.y);
   ctx.strokeStyle = shape.strokeColor;
   ctx.lineWidth = shape.strokeWidth;
+  applyDash(ctx, shape.strokeDash, shape.strokeWidth);
   ctx.stroke();
 
+  // Arrowhead always solid
+  ctx.setLineDash([]);
   ctx.beginPath();
   ctx.moveTo(p2.x, p2.y);
   ctx.lineTo(

@@ -1,7 +1,9 @@
 import { useState, useCallback } from 'react';
 import { useSceneStore } from '../../store/sceneStore';
 import { useObjectStore } from '../../store/objectStore';
-import type { Shape, ShapeType, YouTubeShape, ShapeEvent, EventTrigger, EventAction } from '../../types/shapes';
+import { useCommandStore } from '../../store/commandStore';
+import { useRecordingStore } from '../../store/recordingStore';
+import type { Shape, ShapeType, YouTubeShape, ShapeEvent, EventTrigger, EventAction, StrokeDash } from '../../types/shapes';
 import './PropertiesPanel.css';
 
 const TYPE_ICON: Record<ShapeType, string> = {
@@ -42,10 +44,12 @@ export function PropertiesPanel() {
   const handleDrop = useCallback((e: React.DragEvent, dropIdx: number) => {
     e.preventDefault();
     if (dragIdx === null || dragIdx === dropIdx) { setDragIdx(null); return; }
-    const newIds = [...sceneObjectIds];
-    const [moved] = newIds.splice(dragIdx, 1);
-    newIds.splice(dropIdx, 0, moved);
-    reorderObjects(newIds);
+    useCommandStore.getState().dispatch('Reorder', () => {
+      const newIds = [...sceneObjectIds];
+      const [moved] = newIds.splice(dragIdx, 1);
+      newIds.splice(dropIdx, 0, moved);
+      reorderObjects(newIds);
+    });
     setDragIdx(null);
   }, [dragIdx, sceneObjectIds, reorderObjects]);
 
@@ -98,7 +102,11 @@ export function PropertiesPanel() {
               value={s.opacity}
               onChange={(e) => {
                 const v = parseFloat(e.target.value);
-                if (!isNaN(v) && v >= 0 && v <= 1) updateObject(id, { opacity: v });
+                if (!isNaN(v) && v >= 0 && v <= 1) {
+                  useCommandStore.getState().dispatch('Edit opacity', () => {
+                    updateObject(id, { opacity: v });
+                  });
+                }
               }}
             />
           </div>
@@ -129,11 +137,160 @@ export function PropertiesPanel() {
     );
   }
 
+  // ── Player pseudo-selection ──────────────────────────────────────────────
+  if (ids.length === 1 && ids[0] === '__player__') {
+    const playerEvents = useRecordingStore.getState().playerEvents;
+    const setPlayerEvents = useRecordingStore.getState().setPlayerEvents;
+
+    function addPlayerEvent() {
+      const newEvt: ShapeEvent = {
+        id: crypto.randomUUID(),
+        trigger: 'player_time',
+        triggerTime: 0,
+        action: 'set_opacity',
+      };
+      setPlayerEvents([...playerEvents, newEvt]);
+    }
+
+    function removePlayerEvent(evtId: string) {
+      setPlayerEvents(playerEvents.filter((e) => e.id !== evtId));
+    }
+
+    function updatePlayerEvent(evtId: string, patch: Partial<ShapeEvent>) {
+      setPlayerEvents(playerEvents.map((e) => (e.id === evtId ? { ...e, ...patch } : e)));
+    }
+
+    const targetObjects = sceneObjectIds
+      .map((id) => objects[id])
+      .filter((o): o is Shape => !!o);
+
+    const needsTarget = (action: EventAction) =>
+      action === 'start_youtube' || action === 'stop_youtube' || action === 'set_opacity';
+    const needsValue = (action: EventAction) =>
+      action === 'seek_player' || action === 'navigate_scene' || action === 'set_opacity';
+
+    return (
+      <aside className="props-panel">
+        <div className="props-panel__header">Player Events</div>
+        <section className="props-section">
+          <div className="props-section__title">
+            Events ({playerEvents.length})
+            <button className="props-evt-add" title="Add event" onClick={addPlayerEvent}>+</button>
+          </div>
+          <span className="props-hint" style={{ marginBottom: 6 }}>
+            Fire actions at specific player times or on play/pause/end.
+          </span>
+          {playerEvents.length === 0 && (
+            <span className="props-hint">No events. Click + to add one.</span>
+          )}
+          {playerEvents.map((evt) => (
+            <div key={evt.id} className="props-evt-row">
+              <div className="props-evt-line">
+                <span className="props-evt-label">When</span>
+                <select
+                  className="props-evt-select"
+                  value={evt.trigger}
+                  onChange={(e) => updatePlayerEvent(evt.id, { trigger: e.target.value as EventTrigger })}
+                >
+                  <option value="player_time">@ time</option>
+                  <option value="player_play">play</option>
+                  <option value="player_pause">pause</option>
+                  <option value="player_ended">ended</option>
+                </select>
+                {evt.trigger === 'player_time' && (
+                  <>
+                    <input
+                      className="props-field__input props-field__input--num props-evt-time"
+                      type="number"
+                      min="0"
+                      step="1"
+                      title="Trigger at (seconds)"
+                      value={evt.triggerTime ?? 0}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        if (!isNaN(v) && v >= 0) updatePlayerEvent(evt.id, { triggerTime: v });
+                      }}
+                    />
+                    <span className="props-evt-unit">s</span>
+                  </>
+                )}
+              </div>
+              <div className="props-evt-line">
+                <span className="props-evt-label">Do</span>
+                <select
+                  className="props-evt-select"
+                  value={evt.action}
+                  onChange={(e) => updatePlayerEvent(evt.id, { action: e.target.value as EventAction })}
+                >
+                  <option value="start_player">Start player</option>
+                  <option value="stop_player">Stop player</option>
+                  <option value="seek_player">Seek player to</option>
+                  <option value="navigate_scene">Go to scene</option>
+                  <option value="start_youtube">Start YouTube</option>
+                  <option value="stop_youtube">Stop YouTube</option>
+                  <option value="set_opacity">Set opacity</option>
+                </select>
+                <button
+                  className="props-evt-del"
+                  title="Remove event"
+                  onClick={() => removePlayerEvent(evt.id)}
+                >×</button>
+              </div>
+              {needsValue(evt.action) && (
+                <div className="props-evt-line">
+                  <span className="props-evt-label" />
+                  <input
+                    className="props-field__input props-field__input--num props-evt-time"
+                    type="number"
+                    min="0"
+                    step={evt.action === 'set_opacity' ? '0.1' : '1'}
+                    title={evt.action === 'seek_player' ? 'Seek to (seconds)' : evt.action === 'set_opacity' ? 'Opacity (0–1)' : 'Scene number (1-based)'}
+                    value={evt.actionValue ?? (evt.action === 'set_opacity' ? 1 : 0)}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      if (!isNaN(v) && v >= 0) updatePlayerEvent(evt.id, { actionValue: v });
+                    }}
+                  />
+                </div>
+              )}
+              {needsTarget(evt.action) && (
+                <div className="props-evt-line">
+                  <span className="props-evt-label" />
+                  <select
+                    className="props-evt-select"
+                    value={evt.actionTarget ?? ''}
+                    onChange={(e) => updatePlayerEvent(evt.id, { actionTarget: e.target.value })}
+                  >
+                    <option value="">— select target —</option>
+                    {targetObjects
+                      .filter((o) => {
+                        if (evt.action === 'start_youtube' || evt.action === 'stop_youtube') return o.type === 'youtube';
+                        return true;
+                      })
+                      .map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.name || o.label || o.type} ({o.type})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          ))}
+        </section>
+      </aside>
+    );
+  }
+
   const shape = objects[ids[0]];
   if (!shape) return null;
 
+  const dispatch = useCommandStore.getState().dispatch;
+
   function update(patch: Partial<Shape>) {
-    updateObject(ids[0], patch);
+    dispatch('Edit property', () => {
+      updateObject(ids[0], patch);
+    });
   }
 
   function numInput(label: string, value: number, key: keyof Shape, min?: number) {
@@ -178,7 +335,7 @@ export function PropertiesPanel() {
     );
   }
 
-  const isLinear = shape.type === 'line' || shape.type === 'arrow';
+  const isLinear = shape.type === 'line' || shape.type === 'arrow' || shape.type === 'squiggle' || shape.type === 'freedraw';
   const isYouTube = shape.type === 'youtube';
   const hasTabs = true; // all shapes get the Events tab
 
@@ -399,6 +556,18 @@ export function PropertiesPanel() {
           {colorInput('Stroke', shape.strokeColor, 'strokeColor')}
           {!isLinear && colorInput('Fill', shape.fillColor, 'fillColor')}
           {numInput('Line', shape.strokeWidth, 'strokeWidth', 0.5)}
+          <label className="props-field">
+            <span className="props-field__label">Dash</span>
+            <select
+              className="props-field__input"
+              value={shape.strokeDash}
+              onChange={(e) => update({ strokeDash: e.target.value as StrokeDash } as Partial<Shape>)}
+            >
+              <option value="solid">Solid ───</option>
+              <option value="dashed">Dashed - - -</option>
+              <option value="dotted">Dotted ···</option>
+            </select>
+          </label>
         </section>
 
         {!isLinear && (

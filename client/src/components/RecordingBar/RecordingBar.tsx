@@ -2,11 +2,13 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   useRecordingStore,
   computePlaybackState,
+  getHeldObjectIds,
   MAX_RECORDING_MS,
 } from '../../store/recordingStore';
 import { useSceneStore } from '../../store/sceneStore';
 import { useObjectStore } from '../../store/objectStore';
 import type { Shape } from '../../types/shapes';
+import { dispatchShapeEvents } from '../../store/youtubeEventDispatcher';
 import './RecordingBar.css';
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
@@ -19,13 +21,14 @@ function fmt(ms: number): string {
   return `${m}:${sec.toString().padStart(2, '0')}.${t}`;
 }
 
-// Apply interpolated positions to the objectStore
-function applyPlayback(t: number): void {
+// Apply interpolated positions to the objectStore, skipping held objects
+function applyPlayback(t: number, skipIds?: ReadonlySet<string>): void {
   const { keyframes } = useRecordingStore.getState();
   if (keyframes.length === 0) return;
   const positions = computePlaybackState(keyframes, t);
   const { updateObject } = useObjectStore.getState();
   for (const [id, state] of positions) {
+    if (skipIds && skipIds.has(id)) continue;
     updateObject(id, state as Partial<Shape>);
   }
 }
@@ -67,7 +70,7 @@ export function RecordingBar() {
   // The visible timeline range: at least the user-set duration
   const timelineMax = Math.max(duration, timelineDuration);
 
-  // ── RAF: advance currentTime during recording ─────────────────────────────
+  // ── RAF: advance currentTime during recording + play back existing anim ──
   useEffect(() => {
     if (!isRecording) return;
     function tick() {
@@ -79,6 +82,8 @@ export function RecordingBar() {
       }
       setCurrentTime(t);
       setDuration(Math.max(useRecordingStore.getState().duration, t));
+      // Play back existing animations, but skip objects currently being dragged
+      applyPlayback(t, getHeldObjectIds());
       rafRef.current = requestAnimationFrame(tick);
     }
     rafRef.current = requestAnimationFrame(tick);
@@ -88,6 +93,10 @@ export function RecordingBar() {
   // ── RAF: advance currentTime + apply positions during playback ───────────
   useEffect(() => {
     if (!isPlaying) return;
+    // Fire player_play event at start
+    const { playerEvents: pevts } = useRecordingStore.getState();
+    if (pevts.length > 0) dispatchShapeEvents(pevts, 'player_play', undefined, '__player__');
+
     function tick() {
       const st  = useRecordingStore.getState();
       const t   = st.timeOffset + (Date.now() - st.epochStart);
@@ -96,11 +105,18 @@ export function RecordingBar() {
       if (t >= end) {
         setCurrentTime(end);
         applyPlayback(end);
+        // Fire player_ended
+        if (st.playerEvents.length > 0) dispatchShapeEvents(st.playerEvents, 'player_ended', undefined, '__player__');
         useRecordingStore.getState().stopPlayback();
         return;
       }
       setCurrentTime(t);
       applyPlayback(t);
+      // Fire player_time events
+      if (st.playerEvents.length > 0) {
+        const sec = t / 1000;
+        dispatchShapeEvents(st.playerEvents, 'player_time', sec, '__player__');
+      }
       rafRef.current = requestAnimationFrame(tick);
     }
     rafRef.current = requestAnimationFrame(tick);
@@ -148,6 +164,8 @@ export function RecordingBar() {
   }
 
   function handlePause() {
+    const { playerEvents: pevts } = useRecordingStore.getState();
+    if (pevts.length > 0) dispatchShapeEvents(pevts, 'player_pause', undefined, '__player__');
     stopPlayback();
   }
 
@@ -274,6 +292,23 @@ export function RecordingBar() {
             }}
           />
           <span className="rec-bar__maxunit">s</span>
+
+          <button
+            className="rec-btn rec-btn--events"
+            title="Player events"
+            onClick={() => {
+              const store = useSceneStore.getState();
+              // Toggle player selection: use '__player__' as a sentinel
+              if (store.selectedIds.has('__player__')) {
+                store.clearSelection();
+              } else {
+                store.clearSelection();
+                store.selectObject('__player__');
+              }
+            }}
+          >
+            Events
+          </button>
         </div>
 
         {/* Timeline */}

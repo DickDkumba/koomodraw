@@ -125,6 +125,20 @@
   background: #15803d;
 }
 
+/* ── Undo / Redo ───────────────────────────────────────────────────────── */
+
+.app-header__undo {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.app-header__undo .hbtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
 /* ── Event Log ──────────────────────────────────────────────────────────── */
 
 .app-header__log-wrap {

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Point } from '../types/shapes';
+import type { Point, ShapeEvent } from '../types/shapes';
 
 export interface Keyframe {
   t: number;           // ms from timeline epoch (absolute position)
@@ -30,6 +30,9 @@ interface RecordingStore {
   // User-configurable timeline length (ms); default 30 s
   timelineDuration: number;
 
+  // Player events (like YouTube events but for the scene player)
+  playerEvents: ShapeEvent[];
+
   // Actions
   startRecording:     (timeOffset: number) => void;
   stopRecording:      () => void;
@@ -42,6 +45,7 @@ interface RecordingStore {
   setCurrentTime:     (t: number) => void;
   setDuration:        (d: number) => void;
   setTimelineDuration:(ms: number) => void;
+  setPlayerEvents: (events: ShapeEvent[]) => void;
 }
 
 export const useRecordingStore = create<RecordingStore>((set, get) => ({
@@ -53,6 +57,7 @@ export const useRecordingStore = create<RecordingStore>((set, get) => ({
   epochStart:       0,
   timeOffset:       0,
   timelineDuration: 30_000,  // default 30 seconds
+  playerEvents: [],
 
   startRecording: (timeOffset) => set({
     isRecording: true,
@@ -90,7 +95,25 @@ export const useRecordingStore = create<RecordingStore>((set, get) => ({
   setCurrentTime:     (t) => set({ currentTime: t }),
   setDuration:        (d) => set({ duration: d }),
   setTimelineDuration:(ms) => set({ timelineDuration: Math.max(5_000, Math.min(ms, MAX_RECORDING_MS)) }),
+  setPlayerEvents: (events) => set({ playerEvents: events }),
 }));
+
+// ─── Held objects (objects being actively dragged — skip during playback) ─────
+
+const _heldIds = new Set<string>();
+
+export function setHeldObjectIds(ids: Iterable<string>): void {
+  _heldIds.clear();
+  for (const id of ids) _heldIds.add(id);
+}
+
+export function clearHeldObjectIds(): void {
+  _heldIds.clear();
+}
+
+export function getHeldObjectIds(): ReadonlySet<string> {
+  return _heldIds;
+}
 
 // ─── Interpolation ────────────────────────────────────────────────────────────
 

@@ -6,6 +6,7 @@ const DEFAULTS = {
   strokeColor: '#334155',
   fillColor: '#f8fafc',
   strokeWidth: 1.5,
+  strokeDash: 'solid' as const,
 };
 
 function nextName(type: ShapeType): string {
